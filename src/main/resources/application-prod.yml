@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/order_mvp?useSSL=false&serverTimezone=UTC&characterEncoding=utf8
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: root
+  data:
+    redis:
+      host: localhost
+      port: 6379
+rocketmq:
+  name-server: localhost:9876
+app:
+  redis:
+    enabled: true
+  mq:
+    enabled: true
