@@ -56,8 +56,8 @@ class OrderCommandServiceTest {
 
     @Test
     void buyOrderShouldEatSellOrder() {
-        var sell = orderCommandService.place(new OrderCreateRequest("AAPL", OrderSide.SELL, new BigDecimal("100"), 5));
-        var buy = orderCommandService.place(new OrderCreateRequest("AAPL", OrderSide.BUY, new BigDecimal("120"), 3));
+        var sell = orderCommandService.place(new OrderCreateRequest("MASK-50", OrderSide.SELL, new BigDecimal("100"), 5));
+        var buy = orderCommandService.place(new OrderCreateRequest("MASK-50", OrderSide.BUY, new BigDecimal("120"), 3));
 
         assertThat(buy.order().status()).isEqualTo(OrderStatus.FILLED);
         assertThat(buy.trades()).hasSize(1);
@@ -73,8 +73,8 @@ class OrderCommandServiceTest {
 
     @Test
     void shouldSupportPartialFill() {
-        var sell = orderCommandService.place(new OrderCreateRequest("AAPL", OrderSide.SELL, new BigDecimal("100"), 2));
-        var buy = orderCommandService.place(new OrderCreateRequest("AAPL", OrderSide.BUY, new BigDecimal("110"), 5));
+        var sell = orderCommandService.place(new OrderCreateRequest("MASK-50", OrderSide.SELL, new BigDecimal("100"), 2));
+        var buy = orderCommandService.place(new OrderCreateRequest("MASK-50", OrderSide.BUY, new BigDecimal("110"), 5));
 
         assertThat(buy.order().status()).isEqualTo(OrderStatus.PARTIALLY_FILLED);
         assertThat(buy.order().remainingQuantity()).isEqualTo(3);
@@ -85,11 +85,11 @@ class OrderCommandServiceTest {
 
     @Test
     void shouldMatchEarlierOrderFirstAtSamePrice() throws Exception {
-        var first = orderCommandService.place(new OrderCreateRequest("AAPL", OrderSide.SELL, new BigDecimal("100"), 1));
+        var first = orderCommandService.place(new OrderCreateRequest("MASK-50", OrderSide.SELL, new BigDecimal("100"), 1));
         Thread.sleep(10L);
-        var second = orderCommandService.place(new OrderCreateRequest("AAPL", OrderSide.SELL, new BigDecimal("100"), 1));
+        var second = orderCommandService.place(new OrderCreateRequest("MASK-50", OrderSide.SELL, new BigDecimal("100"), 1));
 
-        var buy = orderCommandService.place(new OrderCreateRequest("AAPL", OrderSide.BUY, new BigDecimal("100"), 1));
+        var buy = orderCommandService.place(new OrderCreateRequest("MASK-50", OrderSide.BUY, new BigDecimal("100"), 1));
 
         assertThat(buy.trades()).hasSize(1);
         assertThat(buy.trades().getFirst().sellOrderId()).isEqualTo(first.order().id());
@@ -102,11 +102,11 @@ class OrderCommandServiceTest {
 
     @Test
     void canceledOrderShouldNotMatchAgain() {
-        var sell = orderCommandService.place(new OrderCreateRequest("AAPL", OrderSide.SELL, new BigDecimal("100"), 1));
+        var sell = orderCommandService.place(new OrderCreateRequest("MASK-50", OrderSide.SELL, new BigDecimal("100"), 1));
 
         orderCommandService.cancel(sell.order().id());
 
-        var buy = orderCommandService.place(new OrderCreateRequest("AAPL", OrderSide.BUY, new BigDecimal("120"), 1));
+        var buy = orderCommandService.place(new OrderCreateRequest("MASK-50", OrderSide.BUY, new BigDecimal("120"), 1));
 
         assertThat(buy.trades()).isEmpty();
         assertThat(buy.order().status()).isEqualTo(OrderStatus.NEW);
@@ -115,10 +115,10 @@ class OrderCommandServiceTest {
 
     @Test
     void shouldRejectInvalidPriceOrQuantity() {
-        assertThatThrownBy(() -> orderCommandService.place(new OrderCreateRequest("AAPL", OrderSide.BUY, BigDecimal.ZERO, 1)))
+        assertThatThrownBy(() -> orderCommandService.place(new OrderCreateRequest("MASK-50", OrderSide.BUY, BigDecimal.ZERO, 1)))
                 .hasMessageContaining("price must be positive");
 
-        assertThatThrownBy(() -> orderCommandService.place(new OrderCreateRequest("AAPL", OrderSide.BUY, new BigDecimal("1"), 0)))
+        assertThatThrownBy(() -> orderCommandService.place(new OrderCreateRequest("MASK-50", OrderSide.BUY, new BigDecimal("1"), 0)))
                 .hasMessageContaining("quantity must be positive");
     }
 }

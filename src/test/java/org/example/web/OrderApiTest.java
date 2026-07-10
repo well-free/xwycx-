@@ -50,7 +50,7 @@ class OrderApiTest {
     void shouldCreateCancelAndQueryOrdersThroughHttp() throws Exception {
         String createBody = """
                 {
-                  "symbol": "AAPL",
+                  "symbol": "MASK-50",
                   "side": "BUY",
                   "price": 100.00,
                   "quantity": 2

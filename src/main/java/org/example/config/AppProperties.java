@@ -7,6 +7,7 @@ public class AppProperties {
     private final Redis redis = new Redis();
     private final Mq mq = new Mq();
     private final Order order = new Order();
+    private final Payment payment = new Payment();
 
     public Redis getRedis() {
         return redis;
@@ -18,6 +19,10 @@ public class AppProperties {
 
     public Order getOrder() {
         return order;
+    }
+
+    public Payment getPayment() {
+        return payment;
     }
 
     public static class Redis {
@@ -89,6 +94,18 @@ public class AppProperties {
 
         public void setEmptyTtlSeconds(long emptyTtlSeconds) {
             this.emptyTtlSeconds = emptyTtlSeconds;
+        }
+    }
+
+    public static class Payment {
+        private long timeoutSeconds = 300L;
+
+        public long getTimeoutSeconds() {
+            return timeoutSeconds;
+        }
+
+        public void setTimeoutSeconds(long timeoutSeconds) {
+            this.timeoutSeconds = timeoutSeconds;
         }
     }
 }

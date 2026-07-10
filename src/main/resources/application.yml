@@ -28,3 +28,5 @@ app:
     timeout-seconds: 15
     cache-ttl-seconds: 120
     empty-ttl-seconds: 30
+  payment:
+    timeout-seconds: 300

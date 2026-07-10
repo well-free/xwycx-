@@ -70,10 +70,10 @@ public class ProductService {
         ProductEntity a = new ProductEntity();
         a.setId(1L);
         a.setMerchantId(1L);
-        a.setName("Apple Juice");
-        a.setPrice(new BigDecimal("19.9"));
-        a.setStock(1000L);
-        a.setHotScore(87);
+        a.setName("一次性医用口罩 50只装");
+        a.setPrice(new BigDecimal("12.80"));
+        a.setStock(5000L);
+        a.setHotScore(96);
         a.setUpdatedAt(Instant.now());
         productMapper.insert(a);
         bloomFilterService.put(String.valueOf(a.getId()));
