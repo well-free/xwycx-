@@ -3,213 +3,100 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>xwycx 一次性用品订单交易系统</title>
+  <title>xwycx 一次性用品采购总览</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <main class="app-shell">
-    <header class="topbar">
+  <main class="app-shell commerce-app">
+    <header class="topbar commerce-topbar">
       <div class="brand">
         <span class="brand-mark">XW</span>
         <div>
           <p>xwycx.xyz Disposable Supplies</p>
-          <h1>一次性用品订单交易系统</h1>
+          <h1>一次性用品采购总览</h1>
         </div>
       </div>
+      <nav class="workspace-tabs" aria-label="页面导航">
+        <a class="active" href="/index.html">总览</a>
+        <a href="/products.html">商品采购</a>
+        <a href="/orders.html">订单支付</a>
+      </nav>
       <div class="topbar-actions">
-        <div class="health-pill" id="serverStatus">
-          <span class="health-dot"></span>
-          连接中
-        </div>
-        <button id="refreshBtn" type="button" class="icon-button" title="刷新数据" aria-label="刷新数据">
-          <span aria-hidden="true">↻</span>
-        </button>
+        <div class="health-pill" id="userStatus"><span class="health-dot"></span>未登录</div>
+        <div class="health-pill" id="serverStatus"><span class="health-dot"></span>连接中</div>
+        <button id="logoutBtn" type="button" class="icon-button" title="退出登录" aria-label="退出登录"><span aria-hidden="true">⎋</span></button>
+        <button id="refreshBtn" type="button" class="icon-button" title="刷新数据" aria-label="刷新数据"><span aria-hidden="true">↻</span></button>
       </div>
     </header>
 
-    <section class="metric-grid" aria-label="用品订单概览">
+    <section class="commerce-hero" id="commerceHero" aria-label="采购总览">
+      <div class="hero-copy">
+        <p class="section-kicker">Procurement Hub</p>
+        <h2>xwycx.xyz 一次性用品采购系统</h2>
+        <p>把商品浏览、采购订单、支付售后和后台运营拆成独立页面，适合真实采购流程逐步使用。</p>
+        <div class="hero-actions">
+          <a class="primary-action nav-action" href="/products.html">进入商品采购</a>
+          <a class="secondary-action nav-action" href="/orders.html">查看订单支付</a>
+        </div>
+      </div>
+      <div class="hero-flow" aria-label="采购流程">
+        <a class="flow-step active" href="/products.html">
+          <span>1</span>
+          <strong>商品采购</strong>
+          <small>搜索 SKU、选择数量、创建采购单</small>
+        </a>
+        <a class="flow-step" href="/orders.html">
+          <span>2</span>
+          <strong>订单支付</strong>
+          <small>筛选订单、发起支付、处理售后</small>
+        </a>
+        <a class="flow-step" href="/login.html">
+          <span>3</span>
+          <strong>用户登录</strong>
+          <small>手机号验证码登录和权限识别</small>
+        </a>
+      </div>
+    </section>
+
+    <section class="metric-grid commerce-metrics" aria-label="采购概览">
       <article class="metric">
-        <span class="metric-label">订单总数</span>
+        <span class="metric-label">登录用户</span>
+        <strong id="metricUser">未登录</strong>
+        <small id="metricRole">请先登录后下单</small>
+      </article>
+      <article class="metric">
+        <span class="metric-label">商品数量</span>
+        <strong id="metricProducts">0</strong>
+        <small>可采购商品</small>
+      </article>
+      <article class="metric">
+        <span class="metric-label">我的订单</span>
         <strong id="metricOrders">0</strong>
-        <small id="metricOpen">0 个可撮合订单</small>
+        <small id="metricPending">0 笔待支付</small>
       </article>
       <article class="metric">
-        <span class="metric-label">成交笔数</span>
-        <strong id="metricTrades">0</strong>
-        <small id="metricVolume">累计 0 包/箱</small>
-      </article>
-      <article class="metric">
-        <span class="metric-label">最近成交价</span>
-        <strong id="metricLastPrice">--</strong>
-        <small id="metricLastSymbol">暂无成交</small>
-      </article>
-      <article class="metric">
-        <span class="metric-label">当前 SKU</span>
-        <strong id="metricSymbol">MASK-50</strong>
-        <small id="metricSpread">等待买卖盘</small>
+        <span class="metric-label">已支付订单</span>
+        <strong id="metricPaidOrders">0</strong>
+        <small id="metricPaid">0 笔支付完成</small>
       </article>
       <article class="metric">
         <span class="metric-label">支付单</span>
         <strong id="metricPayments">0</strong>
-        <small id="metricPaid">0 笔已支付</small>
+        <small>支付与售后记录</small>
       </article>
     </section>
 
-    <section class="workspace">
-      <section class="panel ticket-panel" aria-labelledby="ticketTitle">
-        <div class="panel-head">
-          <div>
-            <p class="section-kicker">Supply Order</p>
-            <h2 id="ticketTitle">提交用品限价单</h2>
-          </div>
-          <div class="segmented" role="group" aria-label="买卖方向">
-            <button type="button" class="side-switch active" data-side="BUY">买入</button>
-            <button type="button" class="side-switch" data-side="SELL">卖出</button>
-          </div>
-        </div>
-
-        <form id="orderForm" class="order-form">
-          <label>
-            <span>商品 SKU</span>
-            <input name="symbol" value="MASK-50" autocomplete="off" maxlength="16" />
-          </label>
-          <input name="side" type="hidden" value="BUY" />
-          <label>
-            <span>采购单价</span>
-            <input name="price" type="number" step="0.01" min="0.01" value="12.80" />
-          </label>
-          <label>
-            <span>箱/包数量</span>
-            <input name="quantity" type="number" step="1" min="1" value="10" />
-          </label>
-          <div class="quote-strip">
-            <button type="button" data-price="9.90">9.90</button>
-            <button type="button" data-price="12.80">12.80</button>
-            <button type="button" data-price="16.50">16.50</button>
-          </div>
-          <button id="submitOrderBtn" type="submit" class="primary-action">提交订单</button>
-        </form>
-
-        <div class="result-box" id="orderResult" aria-live="polite">等待提交订单</div>
-      </section>
-
-      <section class="panel book-panel" aria-labelledby="bookTitle">
-        <div class="panel-head">
-          <div>
-            <p class="section-kicker">Supply View</p>
-            <h2 id="bookTitle">供需订单簿</h2>
-          </div>
-          <span class="chip" id="bookSymbol">MASK-50</span>
-        </div>
-        <div class="book-columns">
-          <div>
-            <div class="book-title ask">卖盘</div>
-            <div id="asksBook" class="book-list"></div>
-          </div>
-          <div>
-            <div class="book-title bid">买盘</div>
-            <div id="bidsBook" class="book-list"></div>
-          </div>
-        </div>
-        <div class="activity">
-          <div class="activity-head">
-            <span>最近成交</span>
-            <strong id="lastTradeText">暂无</strong>
-          </div>
-          <div id="tradeTape" class="trade-tape"></div>
-        </div>
-      </section>
-    </section>
-
-    <section class="lower-grid">
-      <section class="panel table-panel" aria-labelledby="ordersTitle">
-        <div class="panel-head">
-          <div>
-            <p class="section-kicker">Orders</p>
-            <h2 id="ordersTitle">订单列表</h2>
-          </div>
-          <div class="inline-control">
-            <input id="orderIdInput" type="number" placeholder="订单 ID" />
-            <button id="cancelBtn" type="button" class="danger-action">撤单</button>
-          </div>
-        </div>
-        <div id="ordersTable" class="table-wrap"></div>
-      </section>
-
-      <aside class="side-stack">
-        <section class="panel ops-panel" aria-labelledby="paymentTitle">
-          <div class="panel-head">
-            <div>
-              <p class="section-kicker">Payment</p>
-              <h2 id="paymentTitle">支付处理</h2>
-            </div>
-          </div>
-          <div class="ops-grid">
-            <label>
-              <span>订单 ID</span>
-              <input id="paymentOrderIdInput" type="number" placeholder="从订单列表选择" />
-            </label>
-            <label>
-              <span>支付渠道</span>
-              <select id="paymentChannelInput">
-                <option value="ALIPAY">支付宝</option>
-                <option value="WECHAT">微信支付</option>
-              </select>
-            </label>
-          </div>
-          <div class="button-row">
-            <button id="paymentCreateBtn" type="button">发起支付</button>
-            <button id="paymentSuccessBtn" type="button" class="secondary-action">模拟成功回调</button>
-            <button id="paymentRefundBtn" type="button" class="secondary-action">退款</button>
-          </div>
-          <div id="paymentResult" class="mini-output">选择订单后可发起支付</div>
-        </section>
-
-        <section class="panel table-panel compact" aria-labelledby="paymentsTitle">
-          <div class="panel-head">
-            <div>
-              <p class="section-kicker">Payments</p>
-              <h2 id="paymentsTitle">支付记录</h2>
-            </div>
-          </div>
-          <div id="paymentsTable" class="table-wrap"></div>
-        </section>
-
-        <section class="panel ops-panel" aria-labelledby="productTitle">
-          <div class="panel-head">
-            <div>
-              <p class="section-kicker">Product Cache</p>
-              <h2 id="productTitle">商品缓存</h2>
-            </div>
-          </div>
-          <div class="ops-grid">
-            <label>
-              <span>商品 ID</span>
-              <input id="productIdInput" type="number" value="1" min="1" />
-            </label>
-            <label>
-              <span>热度分</span>
-              <input id="hotScoreInput" type="number" value="92" min="0" max="100" />
-            </label>
-          </div>
-          <div class="button-row">
-            <button id="productBtn" type="button">查询商品</button>
-            <button id="hotScoreBtn" type="button" class="secondary-action">更新热度</button>
-            <button id="catalogBtn" type="button" class="secondary-action">模拟变更</button>
-          </div>
-          <div id="productResult" class="mini-output">等待商品操作</div>
-        </section>
-
-        <section class="panel table-panel compact" aria-labelledby="tradesTitle">
-          <div class="panel-head">
-            <div>
-              <p class="section-kicker">Trades</p>
-              <h2 id="tradesTitle">成交记录</h2>
-            </div>
-          </div>
-          <div id="tradesTable" class="table-wrap"></div>
-        </section>
-      </aside>
+    <section class="dashboard-links" aria-label="功能入口">
+      <a class="panel feature-entry" href="/products.html">
+        <span>Catalog</span>
+        <strong>商品采购</strong>
+        <small>浏览一次性用品、搜索 SKU、创建采购订单。</small>
+      </a>
+      <a class="panel feature-entry" href="/orders.html">
+        <span>Orders</span>
+        <strong>订单支付</strong>
+        <small>查看采购订单、发起支付宝/微信支付、申请退款。</small>
+      </a>
     </section>
   </main>
 

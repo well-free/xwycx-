@@ -1,0 +1,18 @@
+[Unit]
+Description=xwycx disposable supplies order system
+After=network.target mysql.service redis-server.service
+
+[Service]
+User=xwycx
+Group=xwycx
+WorkingDirectory=/opt/xwycx
+EnvironmentFile=/etc/xwycx/xwycx.env
+ExecStart=/usr/bin/java -jar /opt/xwycx/xwycx-disposable-order-system.jar --spring.profiles.active=prod
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/xwycx/app.out.log
+StandardError=append:/var/log/xwycx/app.err.log
+
+[Install]
+WantedBy=multi-user.target

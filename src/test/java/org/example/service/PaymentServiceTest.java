@@ -45,7 +45,7 @@ class PaymentServiceTest {
         assertThat(payment.channel()).isEqualTo(PaymentChannel.ALIPAY);
         assertThat(payment.amount()).isEqualByComparingTo("25.00");
         assertThat(payment.status()).isEqualTo(PaymentStatus.PAYING);
-        assertThat(payment.payUrl()).contains("mock-pay/alipay");
+        assertThat(payment.payUrl()).contains("/pay/alipay");
         assertThat(payment.qrCode()).contains(String.valueOf(payment.id()));
     }
 

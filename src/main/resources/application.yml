@@ -9,6 +9,8 @@ spring:
   sql:
     init:
       mode: always
+  flyway:
+    enabled: false
   data:
     redis:
       repositories:
@@ -30,3 +32,6 @@ app:
     empty-ttl-seconds: 30
   payment:
     timeout-seconds: 300
+    mode: mock
+    callback-secret: mock-signature
+    callback-base-url: https://xwycx.xyz

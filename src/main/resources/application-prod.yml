@@ -1,17 +1,34 @@
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/order_mvp?useSSL=false&serverTimezone=UTC&characterEncoding=utf8
+    url: ${XWYCX_DB_URL:jdbc:mysql://localhost:3306/xwycx_order?useSSL=false&serverTimezone=UTC&characterEncoding=utf8}
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: root
-    password: root
+    username: ${XWYCX_DB_USERNAME}
+    password: ${XWYCX_DB_PASSWORD}
+  sql:
+    init:
+      mode: never
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${XWYCX_REDIS_HOST:localhost}
+      port: ${XWYCX_REDIS_PORT:6379}
 rocketmq:
-  name-server: localhost:9876
+  name-server: ${XWYCX_ROCKETMQ_NAMESERVER:localhost:9876}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
 app:
   redis:
     enabled: true
   mq:
     enabled: true
+  payment:
+    mode: ${XWYCX_PAYMENT_MODE:gateway}
+    callback-secret: ${XWYCX_PAYMENT_CALLBACK_SECRET}
+    callback-base-url: ${XWYCX_PAYMENT_CALLBACK_BASE_URL:https://xwycx.xyz}
+    alipay-app-id: ${XWYCX_ALIPAY_APP_ID:}
+    wechat-mch-id: ${XWYCX_WECHAT_MCH_ID:}
