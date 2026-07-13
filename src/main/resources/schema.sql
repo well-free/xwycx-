@@ -92,6 +92,7 @@ create table cart_items (
   user_id bigint not null,
   product_id bigint not null,
   quantity bigint not null,
+  version bigint not null default 0,
   created_at timestamp not null,
   updated_at timestamp not null,
   unique (user_id, product_id)

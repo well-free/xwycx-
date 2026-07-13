@@ -31,7 +31,9 @@ import org.springframework.transaction.annotation.Propagation;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -137,11 +139,14 @@ class WechatAuthServiceTest {
         AuthLoginResponse target = authService.login(new SmsLoginRequest("13800000021", "123456"));
         AuthLoginResponse source = wechatAuthService.login(new WechatLoginRequest("merge-data-code"));
         long now = System.currentTimeMillis();
-        jdbcTemplate.update("insert into cart_items values (?, ?, ?, ?, current_timestamp, current_timestamp)",
+        jdbcTemplate.update("insert into cart_items (id, user_id, product_id, quantity, created_at, updated_at) "
+                        + "values (?, ?, ?, ?, current_timestamp, current_timestamp)",
                 now + 1, target.user().id(), 1L, 2L);
-        jdbcTemplate.update("insert into cart_items values (?, ?, ?, ?, current_timestamp, current_timestamp)",
+        jdbcTemplate.update("insert into cart_items (id, user_id, product_id, quantity, created_at, updated_at) "
+                        + "values (?, ?, ?, ?, current_timestamp, current_timestamp)",
                 now + 2, source.user().id(), 1L, 3L);
-        jdbcTemplate.update("insert into cart_items values (?, ?, ?, ?, current_timestamp, current_timestamp)",
+        jdbcTemplate.update("insert into cart_items (id, user_id, product_id, quantity, created_at, updated_at) "
+                        + "values (?, ?, ?, ?, current_timestamp, current_timestamp)",
                 now + 3, source.user().id(), 2L, 4L);
         jdbcTemplate.update("insert into shipping_addresses values (?, ?, ?, ?, '', '', '', ?, false, current_timestamp, current_timestamp)",
                 now + 4, source.user().id(), "Receiver", "13800000021", "Address");
@@ -149,6 +154,8 @@ class WechatAuthServiceTest {
                         + "values (?, ?, ?, ?, 10.00, 'PENDING_PAYMENT', 0, current_timestamp, current_timestamp)",
                 now + 5, "MERGE-" + now, source.user().id(), now + 4);
         smsCodeStore.save("13800000021", "654321");
+        WechatIdentityEntity identity = identityMapper.selectOne(null);
+        recordingLockService.clear();
 
         wechatAuthService.bindPhone(source.token(), new WechatBindPhoneRequest("13800000021", "654321"));
 
@@ -156,12 +163,59 @@ class WechatAuthServiceTest {
                 "select quantity from cart_items where user_id=? and product_id=1", Long.class, target.user().id()))
                 .isEqualTo(5L);
         assertThat(jdbcTemplate.queryForObject(
+                "select version from cart_items where user_id=? and product_id=1", Long.class, target.user().id()))
+                .isEqualTo(1L);
+        assertThat(jdbcTemplate.queryForObject(
                 "select user_id from cart_items where product_id=2", Long.class)).isEqualTo(target.user().id());
+        assertThat(jdbcTemplate.queryForObject(
+                "select version from cart_items where product_id=2", Long.class)).isEqualTo(1L);
         assertThat(jdbcTemplate.queryForObject(
                 "select user_id from shipping_addresses where id=?", Long.class, now + 4)).isEqualTo(target.user().id());
         assertThat(jdbcTemplate.queryForObject(
                 "select user_id from customer_orders where id=?", Long.class, now + 5)).isEqualTo(target.user().id());
         assertThat(userMapper.selectById(source.user().id())).isNull();
+
+        List<Long> userIds = List.of(source.user().id(), target.user().id()).stream().sorted().toList();
+        List<String> expectedLocks = new ArrayList<>();
+        expectedLocks.add("wechat:bind:identity:" + identity.getId());
+        expectedLocks.add("wechat:bind:phone:13800000021");
+        userIds.forEach(userId -> expectedLocks.add("cart:user:" + userId));
+        userIds.forEach(userId -> List.of(1L, 2L)
+                .forEach(productId -> expectedLocks.add("cart:" + userId + ":" + productId)));
+        assertThat(recordingLockService.keys()).containsExactlyElementsOf(expectedLocks);
+    }
+
+    @Test
+    void shouldRevalidatePhoneOwnerAfterAcquiringCartUserLocks() {
+        String phone = "13800000032";
+        AuthLoginResponse originalOwner = authService.login(new SmsLoginRequest(phone, "123456"));
+        AuthLoginResponse source = wechatAuthService.login(new WechatLoginRequest("revalidate-owner"));
+        WechatIdentityEntity identity = identityMapper.selectOne(null);
+        String code = "654321";
+        long newOwnerId = System.nanoTime();
+        smsCodeMapper.insert(smsAudit(phone, code, Instant.now().plusSeconds(30)));
+        smsCodeStore.save(phone, code);
+        long firstLockedUser = Math.min(source.user().id(), originalOwner.user().id());
+        recordingLockService.runBefore("cart:user:" + firstLockedUser, () -> {
+            userMapper.deleteById(originalOwner.user().id());
+            Instant now = Instant.now();
+            UserEntity owner = new UserEntity();
+            owner.setId(newOwnerId);
+            owner.setPhone(phone);
+            owner.setRole(UserRole.CUSTOMER.name());
+            owner.setCreatedAt(now);
+            owner.setUpdatedAt(now);
+            userMapper.insert(owner);
+        });
+
+        assertThatThrownBy(() -> wechatAuthService.bindPhone(
+                source.token(), new WechatBindPhoneRequest(phone, code)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("phone ownership changed");
+
+        assertThat(identityMapper.selectById(identity.getId()).getUserId()).isEqualTo(source.user().id());
+        assertThat(userMapper.selectById(source.user().id()).getPhone()).startsWith("wx_");
+        assertThat(smsCodeStore.consume(phone, code)).isTrue();
     }
 
     @Test
@@ -201,22 +255,27 @@ class WechatAuthServiceTest {
     }
 
     @Test
-    void shouldRestoreConsumedCodeWhenMergeTransactionFails() {
+    void shouldCapMergedCartQuantityWithoutBlockingAccountBinding() {
         AuthLoginResponse target = authService.login(new SmsLoginRequest("13800000025", "123456"));
         AuthLoginResponse source = wechatAuthService.login(new WechatLoginRequest("rollback-code"));
         long id = System.currentTimeMillis();
-        jdbcTemplate.update("insert into cart_items values (?, ?, ?, ?, current_timestamp, current_timestamp)",
+        jdbcTemplate.update("insert into cart_items (id, user_id, product_id, quantity, created_at, updated_at) "
+                        + "values (?, ?, ?, ?, current_timestamp, current_timestamp)",
                 id + 1, target.user().id(), 1L, Long.MAX_VALUE);
-        jdbcTemplate.update("insert into cart_items values (?, ?, ?, ?, current_timestamp, current_timestamp)",
+        jdbcTemplate.update("insert into cart_items (id, user_id, product_id, quantity, created_at, updated_at) "
+                        + "values (?, ?, ?, ?, current_timestamp, current_timestamp)",
                 id + 2, source.user().id(), 1L, 1L);
         smsCodeMapper.insert(smsAudit("13800000025", "654321", Instant.now().plusSeconds(30)));
         smsCodeStore.save("13800000025", "654321");
 
-        assertThatThrownBy(() -> wechatAuthService.bindPhone(
-                source.token(), new WechatBindPhoneRequest("13800000025", "654321")))
-                .isInstanceOf(ArithmeticException.class);
+        AuthLoginResponse bound = wechatAuthService.bindPhone(
+                source.token(), new WechatBindPhoneRequest("13800000025", "654321"));
 
-        assertThat(smsCodeStore.consume("13800000025", "654321")).isTrue();
+        assertThat(bound.user().id()).isEqualTo(target.user().id());
+        assertThat(jdbcTemplate.queryForObject(
+                "select quantity from cart_items where user_id=? and product_id=1",
+                Long.class, target.user().id())).isEqualTo(99999L);
+        assertThat(smsCodeStore.consume("13800000025", "654321")).isFalse();
     }
 
     @Test
@@ -228,7 +287,8 @@ class WechatAuthServiceTest {
         WechatIdentityEntity identity = identityMapper.selectOne(null);
         AuthLoginResponse target = authService.login(new SmsLoginRequest("13800000027", "123456"));
         long cartId = System.currentTimeMillis();
-        jdbcTemplate.update("insert into cart_items values (?, ?, ?, ?, current_timestamp, current_timestamp)",
+        jdbcTemplate.update("insert into cart_items (id, user_id, product_id, quantity, created_at, updated_at) "
+                        + "values (?, ?, ?, ?, current_timestamp, current_timestamp)",
                 cartId, source.getId(), 2L, 4L);
         smsCodeStore.save("13800000027", "654321");
 
@@ -330,11 +390,20 @@ class WechatAuthServiceTest {
 
     static class RecordingLockService implements DistributedLockService {
         private final List<String> keys = new ArrayList<>();
+        private final Map<String, Runnable> beforeActions = new HashMap<>();
 
         @Override
         public synchronized <T> T withLock(String key, Supplier<T> action) {
+            Runnable beforeAction = beforeActions.remove(key);
+            if (beforeAction != null) {
+                beforeAction.run();
+            }
             keys.add(key);
             return action.get();
+        }
+
+        synchronized void runBefore(String key, Runnable action) {
+            beforeActions.put(key, action);
         }
 
         synchronized List<String> keys() {
@@ -343,6 +412,7 @@ class WechatAuthServiceTest {
 
         synchronized void clear() {
             keys.clear();
+            beforeActions.clear();
         }
     }
 }

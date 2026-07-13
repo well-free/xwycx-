@@ -5,13 +5,11 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import org.example.auth.UserRole;
 import org.example.infrastructure.lock.DistributedLockService;
-import org.example.infrastructure.mybatis.entity.CartItemEntity;
 import org.example.infrastructure.mybatis.entity.CustomerOrderEntity;
 import org.example.infrastructure.mybatis.entity.ShippingAddressEntity;
 import org.example.infrastructure.mybatis.entity.UserEntity;
 import org.example.infrastructure.mybatis.entity.UserSessionEntity;
 import org.example.infrastructure.mybatis.entity.WechatIdentityEntity;
-import org.example.infrastructure.mybatis.mapper.CartItemMapper;
 import org.example.infrastructure.mybatis.mapper.CustomerOrderMapper;
 import org.example.infrastructure.mybatis.mapper.ShippingAddressMapper;
 import org.example.infrastructure.mybatis.mapper.UserMapper;
@@ -31,6 +29,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Supplier;
 
 @Service
 public class WechatAuthService {
@@ -41,7 +42,7 @@ public class WechatAuthService {
     private final UserMapper userMapper;
     private final AuthService authService;
     private final RateLimitService rateLimitService;
-    private final CartItemMapper cartItemMapper;
+    private final CartService cartService;
     private final ShippingAddressMapper shippingAddressMapper;
     private final CustomerOrderMapper customerOrderMapper;
     private final DistributedLockService distributedLockService;
@@ -52,7 +53,7 @@ public class WechatAuthService {
                              UserMapper userMapper,
                              AuthService authService,
                              RateLimitService rateLimitService,
-                             CartItemMapper cartItemMapper,
+                             CartService cartService,
                              ShippingAddressMapper shippingAddressMapper,
                              CustomerOrderMapper customerOrderMapper,
                              DistributedLockService distributedLockService,
@@ -62,7 +63,7 @@ public class WechatAuthService {
         this.userMapper = userMapper;
         this.authService = authService;
         this.rateLimitService = rateLimitService;
-        this.cartItemMapper = cartItemMapper;
+        this.cartService = cartService;
         this.shippingAddressMapper = shippingAddressMapper;
         this.customerOrderMapper = customerOrderMapper;
         this.distributedLockService = distributedLockService;
@@ -112,36 +113,69 @@ public class WechatAuthService {
         String phoneLock = "wechat:bind:phone:" + phone;
         return distributedLockService.withLock(identityLock,
                 () -> distributedLockService.withLock(phoneLock,
-                        () -> bindPhoneWithinLocks(session, phone, request.code())));
+                        () -> bindPhoneWithinLocks(token, session.getWechatIdentityId(), phone, request.code())));
     }
 
-    private AuthLoginResponse bindPhoneWithinLocks(UserSessionEntity session, String phone, String code) {
+    private AuthLoginResponse bindPhoneWithinLocks(String token, long identityId, String phone, String code) {
         AuthService.SmsVerification verification = authService.verifySmsCode(phone, code);
 
         try {
-            return transactionTemplate.execute(status -> {
-                AuthLoginResponse response = bindPhoneTransaction(session, verification.phone());
+            BindParticipants participants = resolveBindParticipants(token, identityId, verification.phone());
+            Supplier<AuthLoginResponse> transaction = () -> transactionTemplate.execute(status -> {
+                AuthLoginResponse response = bindPhoneTransaction(
+                        token, identityId, verification.phone(), participants);
                 authService.completeSmsVerification(verification);
                 return response;
             });
+            return participants.requiresMerge()
+                    ? cartService.withUserLocks(participants.userIds(), transaction)
+                    : transaction.get();
         } catch (RuntimeException exception) {
             authService.restoreSmsVerification(verification);
             throw exception;
         }
     }
 
-    private AuthLoginResponse bindPhoneTransaction(UserSessionEntity session, String phone) {
+    private BindParticipants resolveBindParticipants(String token, long identityId, String phone) {
+        UserSessionEntity session = authService.loadValidSession(token);
+        if (!Objects.equals(session.getWechatIdentityId(), identityId)) {
+            throw BusinessException.unauthorized("wechat login required");
+        }
+        UserEntity source = userMapper.selectById(session.getUserId());
+        WechatIdentityEntity identity = identityMapper.selectOne(new LambdaQueryWrapper<WechatIdentityEntity>()
+                .eq(WechatIdentityEntity::getId, identityId)
+                .eq(WechatIdentityEntity::getUserId, session.getUserId())
+                .last("limit 1"));
+        if (source == null || identity == null) {
+            throw BusinessException.unauthorized("wechat login required");
+        }
+        UserEntity phoneOwner = findPhoneOwner(phone);
+        long targetUserId = phoneOwner == null ? source.getId() : phoneOwner.getId();
+        return new BindParticipants(source.getId(), targetUserId);
+    }
+
+    private AuthLoginResponse bindPhoneTransaction(String token,
+                                                   long identityId,
+                                                   String phone,
+                                                   BindParticipants participants) {
+        UserSessionEntity session = authService.loadValidSession(token);
+        if (!Objects.equals(session.getWechatIdentityId(), identityId)
+                || !Objects.equals(session.getUserId(), participants.sourceUserId())) {
+            throw BusinessException.unauthorized("wechat login required");
+        }
         UserEntity currentUser = userMapper.selectById(session.getUserId());
         WechatIdentityEntity identity = identityMapper.selectOne(new LambdaQueryWrapper<WechatIdentityEntity>()
-                .eq(WechatIdentityEntity::getId, session.getWechatIdentityId())
+                .eq(WechatIdentityEntity::getId, identityId)
                 .eq(WechatIdentityEntity::getUserId, session.getUserId())
                 .last("limit 1"));
         if (currentUser == null || identity == null) {
             throw BusinessException.unauthorized("wechat login required");
         }
-        UserEntity phoneOwner = userMapper.selectOne(new LambdaQueryWrapper<UserEntity>()
-                .eq(UserEntity::getPhone, phone)
-                .last("limit 1"));
+        UserEntity phoneOwner = findPhoneOwner(phone);
+        long actualTargetUserId = phoneOwner == null ? currentUser.getId() : phoneOwner.getId();
+        if (actualTargetUserId != participants.targetUserId()) {
+            throw BusinessException.conflict("phone ownership changed");
+        }
         if (phoneOwner == null || phoneOwner.getId().equals(currentUser.getId())) {
             currentUser.setPhone(phone);
             currentUser.setUpdatedAt(Instant.now());
@@ -167,23 +201,7 @@ public class WechatAuthService {
     }
 
     private void transferOwnedData(long sourceUserId, long targetUserId) {
-        for (CartItemEntity sourceItem : cartItemMapper.selectList(new LambdaQueryWrapper<CartItemEntity>()
-                .eq(CartItemEntity::getUserId, sourceUserId))) {
-            CartItemEntity targetItem = cartItemMapper.selectOne(new LambdaQueryWrapper<CartItemEntity>()
-                    .eq(CartItemEntity::getUserId, targetUserId)
-                    .eq(CartItemEntity::getProductId, sourceItem.getProductId())
-                    .last("limit 1"));
-            if (targetItem == null) {
-                sourceItem.setUserId(targetUserId);
-                sourceItem.setUpdatedAt(Instant.now());
-                cartItemMapper.updateById(sourceItem);
-            } else {
-                targetItem.setQuantity(Math.addExact(targetItem.getQuantity(), sourceItem.getQuantity()));
-                targetItem.setUpdatedAt(Instant.now());
-                cartItemMapper.updateById(targetItem);
-                cartItemMapper.deleteById(sourceItem.getId());
-            }
-        }
+        cartService.mergeCartOwnershipLocked(sourceUserId, targetUserId);
         shippingAddressMapper.update(null, new LambdaUpdateWrapper<ShippingAddressEntity>()
                 .eq(ShippingAddressEntity::getUserId, sourceUserId)
                 .set(ShippingAddressEntity::getUserId, targetUserId)
@@ -192,6 +210,12 @@ public class WechatAuthService {
                 .eq(CustomerOrderEntity::getUserId, sourceUserId)
                 .set(CustomerOrderEntity::getUserId, targetUserId)
                 .set(CustomerOrderEntity::getUpdatedAt, Instant.now()));
+    }
+
+    private UserEntity findPhoneOwner(String phone) {
+        return userMapper.selectOne(new LambdaQueryWrapper<UserEntity>()
+                .eq(UserEntity::getPhone, phone)
+                .last("limit 1"));
     }
 
     private WechatIdentityEntity findIdentity(String appId, String openId) {
@@ -229,6 +253,16 @@ public class WechatAuthService {
 
     static boolean isReservedPhone(String phone) {
         return phone != null && phone.startsWith(RESERVED_PHONE_PREFIX);
+    }
+
+    private record BindParticipants(long sourceUserId, long targetUserId) {
+        boolean requiresMerge() {
+            return sourceUserId != targetUserId;
+        }
+
+        List<Long> userIds() {
+            return requiresMerge() ? List.of(sourceUserId, targetUserId) : List.of(sourceUserId);
+        }
     }
 
     private static String reservedPhone(String appId, String openId) {
