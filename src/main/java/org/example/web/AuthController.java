@@ -1,6 +1,8 @@
 package org.example.web;
 
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
+import org.example.config.AppProperties;
 import org.example.service.AuthService;
 import org.example.web.dto.AuthLoginResponse;
 import org.example.web.dto.AuthUserResponse;
@@ -19,15 +21,28 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 public class AuthController {
     private final AuthService authService;
+    private final AppProperties properties;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, AppProperties properties) {
         this.authService = authService;
+        this.properties = properties;
     }
 
     @PostMapping("/sms/send")
-    public Map<String, Object> send(@Valid @RequestBody SmsSendRequest request) {
-        authService.sendSms(request);
+    public Map<String, Object> send(@Valid @RequestBody SmsSendRequest request, HttpServletRequest servletRequest) {
+        authService.sendSms(request, clientIp(servletRequest));
         return Map.of("message", "sms sent");
+    }
+
+    @GetMapping("/sms/config")
+    public Map<String, Object> smsConfig() {
+        boolean local = "local".equalsIgnoreCase(properties.getSms().getProvider());
+        return Map.of(
+                "provider", properties.getSms().getProvider(),
+                "local", local,
+                "localCode", local ? properties.getSms().getLocalCode() : "",
+                "codeTtlSeconds", properties.getSms().getCodeTtlSeconds()
+        );
     }
 
     @PostMapping("/sms/login")
@@ -44,5 +59,17 @@ public class AuthController {
     @GetMapping("/me")
     public AuthUserResponse me(@RequestHeader(value = "X-Session-Token", required = false) String token) {
         return authService.me(token);
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
+        return request.getRemoteAddr();
     }
 }

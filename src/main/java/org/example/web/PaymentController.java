@@ -53,6 +53,12 @@ public class PaymentController {
         return paymentService.close(authService.requireUser(token), id);
     }
 
+    @PostMapping("/{id}/simulate-success")
+    public PaymentResponse simulateSuccess(@org.springframework.web.bind.annotation.RequestHeader(value = "X-Session-Token", required = false) String token,
+                                           @PathVariable long id) {
+        return paymentService.simulateSuccess(authService.requireUser(token), id);
+    }
+
     @PostMapping("/callbacks/{channel}")
     public PaymentResponse callback(@PathVariable String channel, @Valid @RequestBody PaymentCallbackRequest request) {
         return paymentService.handleCallback(PaymentChannel.valueOf(channel.trim().toUpperCase()), request);

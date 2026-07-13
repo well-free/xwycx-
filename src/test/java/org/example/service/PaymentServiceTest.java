@@ -98,4 +98,13 @@ class PaymentServiceTest {
         assertThat(refund.status()).isEqualTo(RefundStatus.SUCCESS);
         assertThat(paymentService.get(payment.id()).status()).isEqualTo(PaymentStatus.REFUNDED);
     }
+
+    @Test
+    void shouldExposePaymentGatewayMode() {
+        var order = orderCommandService.place(new OrderCreateRequest("MASK-50", OrderSide.BUY, new BigDecimal("10.00"), 1));
+
+        var payment = paymentService.create(new PaymentCreateRequest(order.order().id(), PaymentChannel.ALIPAY));
+
+        assertThat(payment.gatewayMode()).isEqualTo("mock");
+    }
 }

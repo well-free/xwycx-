@@ -87,6 +87,7 @@ public class PaymentService {
                 }
                 Instant now = Instant.now();
                 existing.setAmount(amountOf(order));
+                existing.setGatewayMode(paymentMode());
                 existing.setStatus(PaymentStatus.PAYING.name());
                 existing.setChannelTradeNo(null);
                 existing.setPaidAt(null);
@@ -104,6 +105,7 @@ public class PaymentService {
             PaymentOrderEntity payment = new PaymentOrderEntity();
             payment.setId(IdWorker.getId());
             payment.setOrderId(order.getId());
+            payment.setGatewayMode(paymentMode());
             payment.setChannel(request.channel().name());
             payment.setAmount(amountOf(order));
             payment.setStatus(PaymentStatus.PAYING.name());
@@ -143,6 +145,7 @@ public class PaymentService {
                 payment.setVersion(0L);
             }
             payment.setOrderId(order.getId());
+            payment.setGatewayMode(paymentMode());
             payment.setChannel(request.channel().name());
             payment.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
             payment.setStatus(PaymentStatus.PAYING.name());
@@ -219,6 +222,24 @@ public class PaymentService {
     public PaymentResponse close(AuthUserResponse user, long paymentId) {
         requireVisiblePayment(user, requirePayment(paymentId));
         return close(paymentId);
+    }
+
+    public PaymentResponse simulateSuccess(AuthUserResponse user, long paymentId) {
+        PaymentOrderEntity payment = requirePayment(paymentId);
+        requireVisiblePayment(user, payment);
+        String mode = gatewayModeOf(payment);
+        if (!"mock".equalsIgnoreCase(mode) && !"sandbox".equalsIgnoreCase(mode)) {
+            throw BusinessException.conflict("payment simulation is disabled");
+        }
+        PaymentChannel channel = PaymentChannel.valueOf(payment.getChannel());
+        return handleCallback(channel, new PaymentCallbackRequest(
+                payment.getId(),
+                "SIM-" + payment.getId(),
+                "SIM-" + channel.name() + "-" + payment.getId(),
+                payment.getAmount(),
+                "SUCCESS",
+                properties.getPayment().getCallbackSecret()
+        ));
     }
 
     public PaymentResponse handleCallback(PaymentChannel channel, PaymentCallbackRequest request) {
@@ -387,10 +408,21 @@ public class PaymentService {
     }
 
     private PaymentResponse toResponse(PaymentOrderEntity payment) {
-        return new PaymentResponse(payment.getId(), payment.getOrderId(), PaymentChannel.valueOf(payment.getChannel()),
-                payment.getAmount(), PaymentStatus.valueOf(payment.getStatus()), payment.getChannelTradeNo(),
+        return new PaymentResponse(payment.getId(), payment.getOrderId(), gatewayModeOf(payment),
+                PaymentChannel.valueOf(payment.getChannel()), payment.getAmount(), PaymentStatus.valueOf(payment.getStatus()), payment.getChannelTradeNo(),
                 payment.getPayUrl(), payment.getQrCode(), payment.getCreatedAt(), payment.getUpdatedAt(),
                 payment.getExpireAt(), payment.getPaidAt(), payment.getClosedAt());
+    }
+
+    private String paymentMode() {
+        String mode = properties.getPayment().getMode();
+        return mode == null || mode.isBlank() ? "mock" : mode.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String gatewayModeOf(PaymentOrderEntity payment) {
+        return payment.getGatewayMode() == null || payment.getGatewayMode().isBlank()
+                ? paymentMode()
+                : payment.getGatewayMode();
     }
 
     private RefundResponse toResponse(RefundOrderEntity refund) {

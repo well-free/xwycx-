@@ -9,6 +9,7 @@ public class AppProperties {
     private final Order order = new Order();
     private final Payment payment = new Payment();
     private final Sms sms = new Sms();
+    private final Wechat wechat = new Wechat();
 
     public Redis getRedis() {
         return redis;
@@ -28,6 +29,10 @@ public class AppProperties {
 
     public Sms getSms() {
         return sms;
+    }
+
+    public Wechat getWechat() {
+        return wechat;
     }
 
     public static class Redis {
@@ -108,6 +113,7 @@ public class AppProperties {
         private String callbackSecret = "mock-signature";
         private String callbackBaseUrl = "https://xwycx.xyz";
         private String alipayAppId = "";
+        private String alipaySandboxGatewayUrl = "https://openapi-sandbox.dl.alipaydev.com/gateway.do";
         private String wechatMchId = "";
 
         public long getTimeoutSeconds() {
@@ -148,6 +154,14 @@ public class AppProperties {
 
         public void setAlipayAppId(String alipayAppId) {
             this.alipayAppId = alipayAppId;
+        }
+
+        public String getAlipaySandboxGatewayUrl() {
+            return alipaySandboxGatewayUrl;
+        }
+
+        public void setAlipaySandboxGatewayUrl(String alipaySandboxGatewayUrl) {
+            this.alipaySandboxGatewayUrl = alipaySandboxGatewayUrl;
         }
 
         public String getWechatMchId() {
@@ -240,6 +254,36 @@ public class AppProperties {
 
         public void setAliyunEndpoint(String aliyunEndpoint) {
             this.aliyunEndpoint = aliyunEndpoint;
+        }
+    }
+
+    public static class Wechat {
+        private String appId = "";
+        private String appSecret = "";
+        private String code2SessionUrl = "https://api.weixin.qq.com/sns/jscode2session";
+
+        public String getAppId() {
+            return appId;
+        }
+
+        public void setAppId(String appId) {
+            this.appId = appId;
+        }
+
+        public String getAppSecret() {
+            return appSecret;
+        }
+
+        public void setAppSecret(String appSecret) {
+            this.appSecret = appSecret;
+        }
+
+        public String getCode2SessionUrl() {
+            return code2SessionUrl;
+        }
+
+        public void setCode2SessionUrl(String code2SessionUrl) {
+            this.code2SessionUrl = code2SessionUrl;
         }
     }
 }

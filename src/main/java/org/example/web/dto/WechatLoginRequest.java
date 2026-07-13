@@ -3,5 +3,5 @@ package org.example.web.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public record SmsLoginRequest(@NotBlank String phone, @NotBlank @Size(max = 16) String code) {
+public record WechatLoginRequest(@NotBlank @Size(max = 128) String code) {
 }

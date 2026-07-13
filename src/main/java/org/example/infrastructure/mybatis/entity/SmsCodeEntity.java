@@ -13,6 +13,9 @@ public class SmsCodeEntity {
     private String phone;
     private String code;
     private boolean consumed;
+    private String provider;
+    private String providerRequestId;
+    private String status;
     private Instant expireAt;
     private Instant createdAt;
 
@@ -24,6 +27,12 @@ public class SmsCodeEntity {
     public void setCode(String code) { this.code = code; }
     public boolean isConsumed() { return consumed; }
     public void setConsumed(boolean consumed) { this.consumed = consumed; }
+    public String getProvider() { return provider; }
+    public void setProvider(String provider) { this.provider = provider; }
+    public String getProviderRequestId() { return providerRequestId; }
+    public void setProviderRequestId(String providerRequestId) { this.providerRequestId = providerRequestId; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public Instant getExpireAt() { return expireAt; }
     public void setExpireAt(Instant expireAt) { this.expireAt = expireAt; }
     public Instant getCreatedAt() { return createdAt; }

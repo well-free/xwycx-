@@ -15,6 +15,7 @@ public class CustomerOrderEntity {
     private String orderNo;
     private Long userId;
     private Long addressId;
+    private String shippingSnapshot;
     private BigDecimal totalAmount;
     private String status;
     private String remark;
@@ -34,6 +35,8 @@ public class CustomerOrderEntity {
     public void setUserId(Long userId) { this.userId = userId; }
     public Long getAddressId() { return addressId; }
     public void setAddressId(Long addressId) { this.addressId = addressId; }
+    public String getShippingSnapshot() { return shippingSnapshot; }
+    public void setShippingSnapshot(String shippingSnapshot) { this.shippingSnapshot = shippingSnapshot; }
     public BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
     public String getStatus() { return status; }

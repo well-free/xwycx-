@@ -9,6 +9,7 @@ import java.time.Instant;
 public record PaymentResponse(
         long id,
         long orderId,
+        String gatewayMode,
         PaymentChannel channel,
         BigDecimal amount,
         PaymentStatus status,

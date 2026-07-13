@@ -31,4 +31,18 @@ app:
     callback-secret: ${XWYCX_PAYMENT_CALLBACK_SECRET}
     callback-base-url: ${XWYCX_PAYMENT_CALLBACK_BASE_URL:https://xwycx.xyz}
     alipay-app-id: ${XWYCX_ALIPAY_APP_ID:}
+    alipay-sandbox-gateway-url: ${XWYCX_ALIPAY_SANDBOX_GATEWAY_URL:https://openapi-sandbox.dl.alipaydev.com/gateway.do}
     wechat-mch-id: ${XWYCX_WECHAT_MCH_ID:}
+  sms:
+    provider: aliyun
+    code-length: 6
+    code-ttl-seconds: 300
+    aliyun-access-key-id: ${XWYCX_ALIYUN_SMS_ACCESS_KEY_ID:}
+    aliyun-access-key-secret: ${XWYCX_ALIYUN_SMS_ACCESS_KEY_SECRET:}
+    aliyun-sign-name: ${XWYCX_ALIYUN_SMS_SIGN_NAME:}
+    aliyun-template-code: ${XWYCX_ALIYUN_SMS_TEMPLATE_CODE:}
+    aliyun-endpoint: ${XWYCX_ALIYUN_SMS_ENDPOINT:dysmsapi.aliyuncs.com}
+  wechat:
+    app-id: ${XWYCX_WECHAT_APP_ID}
+    app-secret: ${XWYCX_WECHAT_APP_SECRET}
+    code2-session-url: https://api.weixin.qq.com/sns/jscode2session

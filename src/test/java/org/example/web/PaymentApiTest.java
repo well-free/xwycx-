@@ -141,8 +141,38 @@ class PaymentApiTest {
                                   "status": "SUCCESS",
                                   "signature": "bad"
                                 }
-                                """.formatted(paymentId)))
+                """.formatted(paymentId)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldSimulateSuccessfulPaymentForMockOrSandboxMode() throws Exception {
+        String adminToken = loginAdmin();
+        long orderId = createOrder();
+        String paymentJson = mockMvc.perform(post("/api/payments")
+                        .header("X-Session-Token", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "orderId": %d,
+                                  "channel": "ALIPAY"
+                                }
+                                """.formatted(orderId)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        long paymentId = ((Number) JsonPath.read(paymentJson, "$.id")).longValue();
+
+        String simulatedJson = mockMvc.perform(post("/api/payments/{id}/simulate-success", paymentId)
+                        .header("X-Session-Token", adminToken))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(JsonPath.read(simulatedJson, "$.status").toString()).isEqualTo("SUCCESS");
+        assertThat(JsonPath.read(simulatedJson, "$.channelTradeNo").toString()).contains("SIM-ALIPAY-");
     }
 
     private long createOrder() throws Exception {

@@ -5,8 +5,10 @@ drop table if exists inventory_logs;
 drop table if exists customer_order_items;
 drop table if exists customer_orders;
 drop table if exists shipping_addresses;
+drop table if exists cart_items;
 drop table if exists user_sessions;
 drop table if exists sms_codes;
+drop table if exists wechat_identities;
 drop table if exists users;
 drop table if exists orders;
 drop table if exists trades;
@@ -49,11 +51,25 @@ create table users (
 
 create unique index uk_users_phone on users(phone);
 
+create table wechat_identities (
+  id bigint primary key,
+  user_id bigint not null,
+  appid varchar(64) not null,
+  openid varchar(128) not null,
+  unionid varchar(128),
+  created_at timestamp not null,
+  updated_at timestamp not null,
+  unique (appid, openid)
+);
+
 create table sms_codes (
   id bigint primary key,
   phone varchar(32) not null,
   code varchar(16) not null,
   consumed boolean not null,
+  provider varchar(32) default 'local' not null,
+  provider_request_id varchar(128),
+  status varchar(32) default 'SUCCESS' not null,
   expire_at timestamp not null,
   created_at timestamp not null
 );
@@ -63,6 +79,7 @@ create index idx_sms_phone_code on sms_codes(phone, code, consumed, expire_at);
 create table user_sessions (
   id bigint primary key,
   user_id bigint not null,
+  wechat_identity_id bigint,
   token varchar(128) not null,
   expire_at timestamp not null,
   created_at timestamp not null
@@ -70,11 +87,24 @@ create table user_sessions (
 
 create unique index uk_user_session_token on user_sessions(token);
 
+create table cart_items (
+  id bigint primary key,
+  user_id bigint not null,
+  product_id bigint not null,
+  quantity bigint not null,
+  created_at timestamp not null,
+  updated_at timestamp not null,
+  unique (user_id, product_id)
+);
+
 create table shipping_addresses (
   id bigint primary key,
   user_id bigint not null,
   receiver_name varchar(64) not null,
   receiver_phone varchar(32) not null,
+  province varchar(64) default '' not null,
+  city varchar(64) default '' not null,
+  district varchar(64) default '' not null,
   detail varchar(255) not null,
   default_address boolean not null,
   created_at timestamp not null,
@@ -86,6 +116,7 @@ create table customer_orders (
   order_no varchar(64) not null,
   user_id bigint not null,
   address_id bigint not null,
+  shipping_snapshot varchar(2000),
   total_amount decimal(19,2) not null,
   status varchar(32) not null,
   remark varchar(255),
@@ -157,6 +188,8 @@ create table payment_orders (
   channel_trade_no varchar(128),
   pay_url varchar(512),
   qr_code varchar(512),
+  prepay_id varchar(128),
+  payment_parameters varchar(2000),
   version bigint not null,
   created_at timestamp not null,
   updated_at timestamp not null,

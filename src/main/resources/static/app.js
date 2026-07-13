@@ -338,6 +338,7 @@ function renderPayments() {
       { label: '支付单', render: (p) => `<button class="link-button" data-select-payment="${p.id}">${p.id}</button>` },
       { label: '订单', render: (p) => escapeHtml(p.orderId) },
       { label: '渠道', render: (p) => p.channel === 'ALIPAY' ? '支付宝' : '微信' },
+      { label: '模式', render: (p) => escapeHtml(p.gatewayMode || 'mock') },
       { label: '金额', render: (p) => `¥${formatNumber(p.amount)}` },
       { label: '状态', render: (p) => paymentStatusLabels[p.status] || p.status }
     ],
@@ -486,7 +487,7 @@ els.paymentsTable?.addEventListener('click', (event) => {
       els.paymentOrderIdInput.value = payment.orderId;
     }
     if (els.paymentResult) {
-      els.paymentResult.innerHTML = `<strong>已选中支付单 ${payment.id}</strong><span>${payment.channel} · ¥${formatNumber(payment.amount)} · ${paymentStatusLabels[payment.status] || payment.status}</span>`;
+      els.paymentResult.innerHTML = `<strong>已选中支付单 ${payment.id}</strong><span>${payment.channel} · ${escapeHtml(payment.gatewayMode || 'mock')} · ¥${formatNumber(payment.amount)} · ${paymentStatusLabels[payment.status] || payment.status}</span>`;
     }
   }
 });
@@ -504,7 +505,7 @@ els.paymentCreateBtn?.addEventListener('click', async () => {
     });
     state.selectedPaymentId = payment.id;
     if (els.paymentResult) {
-      els.paymentResult.innerHTML = `<strong>支付单 ${payment.id} 已创建</strong><span>¥${formatNumber(payment.amount)} · ${escapeHtml(payment.qrCode)}</span>`;
+      els.paymentResult.innerHTML = `<strong>支付单 ${payment.id} 已创建</strong><span>${escapeHtml(payment.gatewayMode || 'mock')} · ¥${formatNumber(payment.amount)} · ${escapeHtml(payment.qrCode)}</span>`;
     }
     showToast('支付单已创建');
     await refreshAll(true);
@@ -521,17 +522,7 @@ els.paymentSuccessBtn?.addEventListener('click', async () => {
     return;
   }
   try {
-    await request(`/api/payments/callbacks/${payment.channel.toLowerCase()}`, {
-      method: 'POST',
-      body: JSON.stringify({
-        paymentId: payment.id,
-        notifyId: `ui-${Date.now()}`,
-        channelTradeNo: `MOCK-${payment.channel}-${payment.id}`,
-        amount: payment.amount,
-        status: 'SUCCESS',
-        signature: 'mock-signature'
-      })
-    });
+    await request(`/api/payments/${payment.id}/simulate-success`, { method: 'POST', body: '{}' });
     showToast('支付回调已处理');
     await refreshAll(true);
   } catch (error) {

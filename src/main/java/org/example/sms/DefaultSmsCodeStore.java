@@ -34,4 +34,12 @@ public class DefaultSmsCodeStore implements SmsCodeStore {
         }
         return matched;
     }
+
+    @Override
+    public boolean restoreIfAbsent(String phone, String code, Duration ttl) {
+        if (ttl == null || ttl.isZero() || ttl.isNegative()) {
+            return false;
+        }
+        return cacheStore.putIfAbsent(CODE_PREFIX + phone, code, ttl);
+    }
 }
