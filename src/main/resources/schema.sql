@@ -106,7 +106,7 @@ create table shipping_addresses (
   province varchar(64) default '' not null,
   city varchar(64) default '' not null,
   district varchar(64) default '' not null,
-  detail varchar(255) not null,
+  detail varchar(500) not null,
   default_address boolean not null,
   created_at timestamp not null,
   updated_at timestamp not null

@@ -6,12 +6,10 @@ import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import org.example.auth.UserRole;
 import org.example.infrastructure.lock.DistributedLockService;
 import org.example.infrastructure.mybatis.entity.CustomerOrderEntity;
-import org.example.infrastructure.mybatis.entity.ShippingAddressEntity;
 import org.example.infrastructure.mybatis.entity.UserEntity;
 import org.example.infrastructure.mybatis.entity.UserSessionEntity;
 import org.example.infrastructure.mybatis.entity.WechatIdentityEntity;
 import org.example.infrastructure.mybatis.mapper.CustomerOrderMapper;
-import org.example.infrastructure.mybatis.mapper.ShippingAddressMapper;
 import org.example.infrastructure.mybatis.mapper.UserMapper;
 import org.example.infrastructure.mybatis.mapper.WechatIdentityMapper;
 import org.example.infrastructure.rate.RateLimitService;
@@ -43,7 +41,7 @@ public class WechatAuthService {
     private final AuthService authService;
     private final RateLimitService rateLimitService;
     private final CartService cartService;
-    private final ShippingAddressMapper shippingAddressMapper;
+    private final AddressService addressService;
     private final CustomerOrderMapper customerOrderMapper;
     private final DistributedLockService distributedLockService;
     private final TransactionTemplate transactionTemplate;
@@ -54,7 +52,7 @@ public class WechatAuthService {
                              AuthService authService,
                              RateLimitService rateLimitService,
                              CartService cartService,
-                             ShippingAddressMapper shippingAddressMapper,
+                             AddressService addressService,
                              CustomerOrderMapper customerOrderMapper,
                              DistributedLockService distributedLockService,
                              TransactionTemplate transactionTemplate) {
@@ -64,7 +62,7 @@ public class WechatAuthService {
         this.authService = authService;
         this.rateLimitService = rateLimitService;
         this.cartService = cartService;
-        this.shippingAddressMapper = shippingAddressMapper;
+        this.addressService = addressService;
         this.customerOrderMapper = customerOrderMapper;
         this.distributedLockService = distributedLockService;
         this.transactionTemplate = transactionTemplate;
@@ -128,7 +126,8 @@ public class WechatAuthService {
                 return response;
             });
             return participants.requiresMerge()
-                    ? cartService.withUserLocks(participants.userIds(), transaction)
+                    ? cartService.withUserLocks(participants.userIds(),
+                            () -> addressService.withUserLocks(participants.userIds(), transaction))
                     : transaction.get();
         } catch (RuntimeException exception) {
             authService.restoreSmsVerification(verification);
@@ -202,10 +201,7 @@ public class WechatAuthService {
 
     private void transferOwnedData(long sourceUserId, long targetUserId) {
         cartService.mergeCartOwnershipLocked(sourceUserId, targetUserId);
-        shippingAddressMapper.update(null, new LambdaUpdateWrapper<ShippingAddressEntity>()
-                .eq(ShippingAddressEntity::getUserId, sourceUserId)
-                .set(ShippingAddressEntity::getUserId, targetUserId)
-                .set(ShippingAddressEntity::getUpdatedAt, Instant.now()));
+        addressService.mergeOwnershipLocked(sourceUserId, targetUserId);
         customerOrderMapper.update(null, new LambdaUpdateWrapper<CustomerOrderEntity>()
                 .eq(CustomerOrderEntity::getUserId, sourceUserId)
                 .set(CustomerOrderEntity::getUserId, targetUserId)

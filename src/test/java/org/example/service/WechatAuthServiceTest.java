@@ -148,11 +148,13 @@ class WechatAuthServiceTest {
         jdbcTemplate.update("insert into cart_items (id, user_id, product_id, quantity, created_at, updated_at) "
                         + "values (?, ?, ?, ?, current_timestamp, current_timestamp)",
                 now + 3, source.user().id(), 2L, 4L);
-        jdbcTemplate.update("insert into shipping_addresses values (?, ?, ?, ?, '', '', '', ?, false, current_timestamp, current_timestamp)",
+        jdbcTemplate.update("insert into shipping_addresses values (?, ?, ?, ?, '', '', '', ?, true, current_timestamp, current_timestamp)",
                 now + 4, source.user().id(), "Receiver", "13800000021", "Address");
         jdbcTemplate.update("insert into customer_orders (id, order_no, user_id, address_id, total_amount, status, version, created_at, updated_at) "
                         + "values (?, ?, ?, ?, 10.00, 'PENDING_PAYMENT', 0, current_timestamp, current_timestamp)",
                 now + 5, "MERGE-" + now, source.user().id(), now + 4);
+        jdbcTemplate.update("insert into shipping_addresses values (?, ?, ?, ?, '', '', '', ?, true, current_timestamp, current_timestamp)",
+                now + 6, target.user().id(), "Target", "13800000021", "Target address");
         smsCodeStore.save("13800000021", "654321");
         WechatIdentityEntity identity = identityMapper.selectOne(null);
         recordingLockService.clear();
@@ -172,6 +174,13 @@ class WechatAuthServiceTest {
         assertThat(jdbcTemplate.queryForObject(
                 "select user_id from shipping_addresses where id=?", Long.class, now + 4)).isEqualTo(target.user().id());
         assertThat(jdbcTemplate.queryForObject(
+                "select default_address from shipping_addresses where id=?", Boolean.class, now + 4)).isFalse();
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from shipping_addresses where user_id=? and default_address=true",
+                Long.class, target.user().id())).isEqualTo(1L);
+        assertThat(jdbcTemplate.queryForObject(
+                "select default_address from shipping_addresses where id=?", Boolean.class, now + 6)).isTrue();
+        assertThat(jdbcTemplate.queryForObject(
                 "select user_id from customer_orders where id=?", Long.class, now + 5)).isEqualTo(target.user().id());
         assertThat(userMapper.selectById(source.user().id())).isNull();
 
@@ -180,13 +189,14 @@ class WechatAuthServiceTest {
         expectedLocks.add("wechat:bind:identity:" + identity.getId());
         expectedLocks.add("wechat:bind:phone:13800000021");
         userIds.forEach(userId -> expectedLocks.add("cart:user:" + userId));
+        userIds.forEach(userId -> expectedLocks.add("address:user:" + userId));
         userIds.forEach(userId -> List.of(1L, 2L)
                 .forEach(productId -> expectedLocks.add("cart:" + userId + ":" + productId)));
         assertThat(recordingLockService.keys()).containsExactlyElementsOf(expectedLocks);
     }
 
     @Test
-    void shouldRevalidatePhoneOwnerAfterAcquiringCartUserLocks() {
+    void shouldRevalidatePhoneOwnerAfterAcquiringCartAndAddressUserLocks() {
         String phone = "13800000032";
         AuthLoginResponse originalOwner = authService.login(new SmsLoginRequest(phone, "123456"));
         AuthLoginResponse source = wechatAuthService.login(new WechatLoginRequest("revalidate-owner"));
@@ -196,7 +206,7 @@ class WechatAuthServiceTest {
         smsCodeMapper.insert(smsAudit(phone, code, Instant.now().plusSeconds(30)));
         smsCodeStore.save(phone, code);
         long firstLockedUser = Math.min(source.user().id(), originalOwner.user().id());
-        recordingLockService.runBefore("cart:user:" + firstLockedUser, () -> {
+        recordingLockService.runBefore("address:user:" + firstLockedUser, () -> {
             userMapper.deleteById(originalOwner.user().id());
             Instant now = Instant.now();
             UserEntity owner = new UserEntity();
