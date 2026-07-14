@@ -34,6 +34,12 @@ function showToast(message, tone = 'info') {
   showToast.timer = window.setTimeout(() => els.toast.classList.remove('show'), 2400);
 }
 
+function setAuthBusy(busy) {
+  els.loginBtn.disabled = busy;
+  els.registerBtn.disabled = busy;
+  els.smsBtn.disabled = busy;
+}
+
 async function request(path, options = {}) {
   const response = await fetch(path, {
     headers: {
@@ -89,14 +95,19 @@ async function redirectIfLoggedIn() {
 }
 
 async function submitSmsAuth(successMessage) {
-  const result = await request('/api/auth/sms/login', {
-    method: 'POST',
-    body: JSON.stringify({ phone: els.phoneInput.value.trim(), code: els.codeInput.value.trim() })
-  });
-  localStorage.setItem(tokenKey, result.token);
-  els.authResult.textContent = `${successMessage}: ${result.user.phone} (${result.user.role})`;
-  showToast(successMessage);
-  window.setTimeout(() => window.location.replace(redirectTo), 300);
+  setAuthBusy(true);
+  try {
+    const result = await request('/api/auth/sms/login', {
+      method: 'POST',
+      body: JSON.stringify({ phone: els.phoneInput.value.trim(), code: els.codeInput.value.trim() })
+    });
+    localStorage.setItem(tokenKey, result.token);
+    els.authResult.textContent = `${successMessage}: ${result.user.phone}`;
+    showToast(successMessage);
+    window.setTimeout(() => window.location.replace(redirectTo), 300);
+  } finally {
+    setAuthBusy(false);
+  }
 }
 
 async function registerAndEnter() {

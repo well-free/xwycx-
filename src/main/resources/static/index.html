@@ -3,103 +3,58 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>xwycx 一次性用品采购总览</title>
+  <meta name="theme-color" content="#0d5c3b" />
+  <title>小物优采 - 一次性用品采购</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <main class="app-shell commerce-app">
     <header class="topbar commerce-topbar">
-      <div class="brand">
-        <span class="brand-mark">XW</span>
-        <div>
-          <p>xwycx.xyz Disposable Supplies</p>
-          <h1>一次性用品采购总览</h1>
-        </div>
-      </div>
+      <a class="brand" href="/index.html" aria-label="小物优采首页">
+        <span class="brand-mark">优</span>
+        <div><h1>小物优采</h1><p>xwycx.xyz</p></div>
+      </a>
       <nav class="workspace-tabs" aria-label="页面导航">
-        <a class="active" href="/index.html">总览</a>
+        <a class="active" href="/index.html">首页</a>
         <a href="/products.html">商品采购</a>
-        <a href="/orders.html">订单支付</a>
+        <a href="/orders.html">我的订单</a>
       </nav>
       <div class="topbar-actions">
         <div class="health-pill" id="userStatus"><span class="health-dot"></span>未登录</div>
         <div class="health-pill" id="serverStatus"><span class="health-dot"></span>连接中</div>
-        <button id="logoutBtn" type="button" class="icon-button" title="退出登录" aria-label="退出登录"><span aria-hidden="true">⎋</span></button>
-        <button id="refreshBtn" type="button" class="icon-button" title="刷新数据" aria-label="刷新数据"><span aria-hidden="true">↻</span></button>
+        <button id="refreshBtn" type="button" class="icon-button" title="刷新数据" aria-label="刷新数据">↻</button>
+        <button id="logoutBtn" type="button" class="icon-button" title="退出登录" aria-label="退出登录">↪</button>
       </div>
     </header>
 
-    <section class="commerce-hero" id="commerceHero" aria-label="采购总览">
+    <section class="commerce-hero" id="commerceHero" aria-label="一次性用品采购">
       <div class="hero-copy">
-        <p class="section-kicker">Procurement Hub</p>
-        <h2>xwycx.xyz 一次性用品采购系统</h2>
-        <p>把商品浏览、采购订单、支付售后和后台运营拆成独立页面，适合真实采购流程逐步使用。</p>
+        <p class="section-kicker">xwycx selection</p>
+        <h2>一次性用品，省心采购</h2>
+        <p>餐饮、办公、活动耗材，一站备齐。库存与订单状态实时同步，让每次补货更直接。</p>
         <div class="hero-actions">
-          <a class="primary-action nav-action" href="/products.html">进入商品采购</a>
-          <a class="secondary-action nav-action" href="/orders.html">查看订单支付</a>
+          <a class="primary-action nav-action" href="/products.html">查看热销商品</a>
+          <a class="secondary-action nav-action" href="/orders.html">查看我的订单</a>
         </div>
       </div>
-      <div class="hero-flow" aria-label="采购流程">
-        <a class="flow-step active" href="/products.html">
-          <span>1</span>
-          <strong>商品采购</strong>
-          <small>搜索 SKU、选择数量、创建采购单</small>
-        </a>
-        <a class="flow-step" href="/orders.html">
-          <span>2</span>
-          <strong>订单支付</strong>
-          <small>筛选订单、发起支付、处理售后</small>
-        </a>
-        <a class="flow-step" href="/login.html">
-          <span>3</span>
-          <strong>用户登录</strong>
-          <small>手机号验证码登录和权限识别</small>
-        </a>
+      <div class="hero-visual" role="img" aria-label="一次性用品与清洁防护用品">
+        <div class="hero-visual-note"><strong>日常耗材精选</strong><small>按需采购，库存可见</small></div>
       </div>
     </section>
 
-    <section class="metric-grid commerce-metrics" aria-label="采购概览">
-      <article class="metric">
-        <span class="metric-label">登录用户</span>
-        <strong id="metricUser">未登录</strong>
-        <small id="metricRole">请先登录后下单</small>
-      </article>
-      <article class="metric">
-        <span class="metric-label">商品数量</span>
-        <strong id="metricProducts">0</strong>
-        <small>可采购商品</small>
-      </article>
-      <article class="metric">
-        <span class="metric-label">我的订单</span>
-        <strong id="metricOrders">0</strong>
-        <small id="metricPending">0 笔待支付</small>
-      </article>
-      <article class="metric">
-        <span class="metric-label">已支付订单</span>
-        <strong id="metricPaidOrders">0</strong>
-        <small id="metricPaid">0 笔支付完成</small>
-      </article>
-      <article class="metric">
-        <span class="metric-label">支付单</span>
-        <strong id="metricPayments">0</strong>
-        <small>支付与售后记录</small>
-      </article>
+    <section class="metric-grid" aria-label="采购概览">
+      <article class="metric"><span class="metric-label">当前账号</span><strong id="metricUser">未登录</strong><small id="metricRole">请先登录后采购</small></article>
+      <article class="metric"><span class="metric-label">在售商品</span><strong id="metricProducts">0</strong><small>个 SKU 可采购</small></article>
+      <article class="metric"><span class="metric-label">我的订单</span><strong id="metricOrders">0</strong><small id="metricPending">0 笔待支付</small></article>
+      <article class="metric"><span class="metric-label">已完成支付</span><strong id="metricPaidOrders">0</strong><small id="metricPaid">0 笔支付完成</small></article>
+      <span id="metricPayments" hidden>0</span>
     </section>
 
-    <section class="dashboard-links" aria-label="功能入口">
-      <a class="panel feature-entry" href="/products.html">
-        <span>Catalog</span>
-        <strong>商品采购</strong>
-        <small>浏览一次性用品、搜索 SKU、创建采购订单。</small>
-      </a>
-      <a class="panel feature-entry" href="/orders.html">
-        <span>Orders</span>
-        <strong>订单支付</strong>
-        <small>查看采购订单、发起支付宝/微信支付、申请退款。</small>
-      </a>
+    <section class="dashboard-links" aria-label="快捷入口">
+      <a class="feature-entry" href="/products.html"><span>Catalog</span><strong>商品采购</strong><small>查看在售一次性用品，按 SKU、规格和库存快速选品。</small></a>
+      <a class="feature-entry" href="/orders.html"><span>Orders</span><strong>订单与支付</strong><small>集中处理待支付订单、支付记录和售后退款。</small></a>
     </section>
   </main>
-
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/app.js"></script>
 </body>

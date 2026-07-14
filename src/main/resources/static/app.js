@@ -15,6 +15,7 @@ const state = {
   selectedPaymentId: null,
   productSearch: '',
   productSort: 'hot',
+  productCategory: 'ALL',
   orderStatusFilter: 'ALL',
   initialPaymentOrderId: new URLSearchParams(window.location.search).get('orderId') || ''
 };
@@ -28,7 +29,9 @@ const els = {
   productsGrid: document.getElementById('productsGrid'),
   productSearchInput: document.getElementById('productSearchInput'),
   productSortInput: document.getElementById('productSortInput'),
+  productCategories: document.getElementById('productCategories'),
   selectedProduct: document.getElementById('selectedProduct'),
+  selectedTotal: document.getElementById('selectedTotal'),
   quantityInput: document.getElementById('quantityInput'),
   createOrderBtn: document.getElementById('createOrderBtn'),
   orderStatusFilter: document.getElementById('orderStatusFilter'),
@@ -109,6 +112,26 @@ function formatTime(value) {
   }).format(new Date(value));
 }
 
+function productCategory(product) {
+  const text = `${product.name || ''} ${product.sku || ''} ${product.spec || ''}`.toLowerCase();
+  if (/(杯|餐盒|饭盒|筷|吸管|餐巾|纸盘|餐具|cup|box)/.test(text)) {
+    return 'DINING';
+  }
+  if (/(口罩|手套|清洁|消毒|抹布|垃圾袋|mask|glove)/.test(text)) {
+    return 'CLEANING';
+  }
+  return 'OFFICE';
+}
+
+function updateSelectedTotal() {
+  if (!els.selectedTotal) {
+    return;
+  }
+  const selected = state.products.find((product) => product.id === state.selectedProductId);
+  const quantity = Math.max(0, Number(els.quantityInput?.value || 0));
+  els.selectedTotal.textContent = selected ? `¥${formatNumber(Number(selected.price) * quantity)}` : '¥0.00';
+}
+
 function showToast(message, tone = 'info') {
   if (!els.toast) {
     return;
@@ -179,10 +202,13 @@ function renderMetrics() {
     els.metricUser.textContent = state.user ? state.user.phone : '未登录';
   }
   if (els.metricRole) {
-    els.metricRole.textContent = state.user ? state.user.role : '请先登录后下单';
+    els.metricRole.textContent = state.user
+      ? (state.user.role === 'ADMIN' ? '管理员账号' : '采购用户')
+      : '请先登录后下单';
   }
   if (els.userStatus) {
-    els.userStatus.innerHTML = `<span class="health-dot"></span>${state.user ? `${state.user.phone} · ${state.user.role}` : '未登录'}`;
+    const role = state.user?.role === 'ADMIN' ? '管理员' : '采购用户';
+    els.userStatus.innerHTML = `<span class="health-dot"></span>${state.user ? `${state.user.phone} · ${role}` : '未登录'}`;
   }
   if (els.metricProducts) {
     els.metricProducts.textContent = state.products.length;
@@ -260,6 +286,9 @@ function renderProducts() {
   const keyword = state.productSearch.trim().toLowerCase();
   const rows = state.products
     .filter((product) => {
+      if (state.productCategory !== 'ALL' && productCategory(product) !== state.productCategory) {
+        return false;
+      }
       if (!keyword) {
         return true;
       }
@@ -283,7 +312,7 @@ function renderProducts() {
   els.productsGrid.innerHTML = rows.map((product) => {
     const image = product.mainImage ? `<img src="${escapeHtml(product.mainImage)}" alt="${escapeHtml(product.name)}" loading="lazy" onerror="this.remove()" />` : '';
     return `
-    <button type="button" class="product-card ${state.selectedProductId === product.id ? 'active' : ''}" data-product-id="${product.id}">
+    <button type="button" class="product-card ${state.selectedProductId === product.id ? 'active' : ''}" data-product-id="${product.id}" aria-label="选择 ${escapeHtml(product.name)}">
       <span class="product-media">${image}<b>${escapeHtml(product.sku || 'SKU')}</b></span>
       <span class="product-info">
         <strong>${escapeHtml(product.name)}</strong>
@@ -291,7 +320,7 @@ function renderProducts() {
       </span>
       <span class="product-meta">
         <em>¥${formatNumber(product.price)}</em>
-        <small>库存 ${product.stock} · 热度 ${product.hotScore || 0}</small>
+        <small>库存 ${product.stock}</small>
       </span>
     </button>
   `;
@@ -302,6 +331,7 @@ function renderProducts() {
       ? `<strong>${escapeHtml(selected.name)}</strong><span>${escapeHtml(selected.sku)} · ¥${formatNumber(selected.price)} · 库存 ${selected.stock} · ${escapeHtml(selected.spec)}</span>`
       : '请选择商品';
   }
+  updateSelectedTotal();
 }
 
 function renderOrders() {
@@ -425,6 +455,20 @@ els.productSortInput?.addEventListener('change', () => {
   state.productSort = els.productSortInput.value;
   renderProducts();
 });
+
+els.productCategories?.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-category]');
+  if (!button) {
+    return;
+  }
+  state.productCategory = button.dataset.category;
+  els.productCategories.querySelectorAll('[data-category]').forEach((item) => {
+    item.classList.toggle('active', item === button);
+  });
+  renderProducts();
+});
+
+els.quantityInput?.addEventListener('input', updateSelectedTotal);
 
 els.orderStatusFilter?.addEventListener('change', () => {
   state.orderStatusFilter = els.orderStatusFilter.value;

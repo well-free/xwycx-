@@ -3,83 +3,52 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>后台运营 - xwycx</title>
+  <meta name="theme-color" content="#0d5c3b" />
+  <title>后台运营 - 小物优采</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body class="admin-only-page">
   <main class="app-shell commerce-app">
     <header class="topbar commerce-topbar">
-      <div class="brand">
-        <span class="brand-mark">XW</span>
-        <div>
-          <p>xwycx.xyz Disposable Supplies</p>
-          <h1>后台运营</h1>
-        </div>
-      </div>
-      <nav class="workspace-tabs" aria-label="页面导航">
-        <a href="/index.html">总览</a>
-        <a href="/products.html">商品采购</a>
-        <a href="/orders.html">订单支付</a>
-        <a class="active admin-nav-link" href="/admin.html" data-admin-link="true">后台运营</a>
-      </nav>
+      <a class="brand" href="/index.html" aria-label="小物优采首页"><span class="brand-mark">优</span><div><h1>小物优采</h1><p>xwycx.xyz</p></div></a>
+      <nav class="workspace-tabs" aria-label="页面导航"><a href="/index.html">首页</a><a href="/products.html">商品采购</a><a href="/orders.html">我的订单</a><a class="active" href="/admin.html" data-admin-link="true">后台运营</a></nav>
       <div class="topbar-actions">
         <div class="health-pill" id="userStatus"><span class="health-dot"></span>未登录</div>
         <div class="health-pill" id="serverStatus"><span class="health-dot"></span>连接中</div>
-        <button id="logoutBtn" type="button" class="icon-button" title="退出登录" aria-label="退出登录"><span aria-hidden="true">⎋</span></button>
-        <button id="refreshBtn" type="button" class="icon-button" title="刷新数据" aria-label="刷新数据"><span aria-hidden="true">↻</span></button>
+        <button id="refreshBtn" type="button" class="icon-button" title="刷新数据" aria-label="刷新数据">↻</button>
+        <button id="logoutBtn" type="button" class="icon-button" title="退出登录" aria-label="退出登录">↪</button>
       </div>
     </header>
 
+    <section class="page-heading admin-protected"><div><p class="section-kicker">Operations</p><h2>后台运营</h2><p>维护商品与库存，处理已支付订单的履约状态。</p></div><span class="chip" id="adminRoleChip">需要管理员</span></section>
+
     <section class="admin-layout admin-protected">
-      <section class="panel ops-panel admin-panel" id="adminPanel" aria-labelledby="adminTitle">
-        <div class="panel-head">
-          <div>
-            <p class="section-kicker">Admin</p>
-            <h2 id="adminTitle">商品运营</h2>
+      <section class="panel admin-panel" id="adminPanel" aria-labelledby="adminTitle">
+        <div class="panel-head"><div><p class="section-kicker">Product management</p><h2 id="adminTitle">商品与履约</h2></div></div>
+        <div class="admin-panel-body">
+          <div class="ops-grid admin-form-grid">
+            <label><span>SKU</span><input id="adminSkuInput" value="GLOVE-100" /></label>
+            <label><span>商品名称</span><input id="adminNameInput" value="一次性手套 100只装" /></label>
+            <label><span>销售价格</span><input id="adminPriceInput" type="number" step="0.01" value="18.80" /></label>
+            <label><span>可售库存</span><input id="adminStockInput" type="number" value="200" /></label>
+            <label><span>待发货订单 ID</span><input id="paymentOrderIdInput" type="number" placeholder="输入已支付订单 ID" /></label>
           </div>
-          <span class="chip" id="adminRoleChip">需要管理员</span>
+          <div class="button-row"><button id="adminCreateProductBtn" type="button">新增商品</button><button id="adminShipBtn" type="button" class="secondary-action">确认发货</button></div>
+          <div id="adminResult" class="mini-output">等待管理员操作。</div>
         </div>
-        <div class="ops-grid admin-form-grid">
-          <label>
-            <span>SKU</span>
-            <input id="adminSkuInput" value="GLOVE-100" />
-          </label>
-          <label>
-            <span>商品名称</span>
-            <input id="adminNameInput" value="一次性手套 100只装" />
-          </label>
-          <label>
-            <span>价格</span>
-            <input id="adminPriceInput" type="number" step="0.01" value="18.80" />
-          </label>
-          <label>
-            <span>库存</span>
-            <input id="adminStockInput" type="number" value="200" />
-          </label>
-          <label>
-            <span>发货订单 ID</span>
-            <input id="paymentOrderIdInput" type="number" placeholder="输入已支付订单 ID" />
-          </label>
-        </div>
-        <div class="button-row">
-          <button id="adminCreateProductBtn" type="button">新增商品</button>
-          <button id="adminShipBtn" type="button" class="secondary-action">录入发货</button>
-        </div>
-        <div id="adminResult" class="mini-output">管理员手机号 13900000000 登录后可操作。录入发货时请先在订单支付页复制订单 ID。</div>
       </section>
 
-      <aside class="panel admin-guide">
-        <p class="section-kicker">Operations</p>
-        <h2>运营动作拆分</h2>
-        <div class="guide-list">
-          <span>1. 新商品在后台创建后，采购页会刷新商品列表。</span>
-          <span>2. 支付完成后，管理员可录入发货状态。</span>
-          <span>3. 退款审核接口已预留，可继续扩展为独立售后页面。</span>
+      <aside class="panel admin-summary">
+        <div class="panel-head"><div><p class="section-kicker">Workspace</p><h2>运营状态</h2></div></div>
+        <div class="admin-summary-body summary-list">
+          <div class="summary-row"><span>当前权限</span><strong>管理员</strong></div>
+          <div class="summary-row"><span>商品维护</span><strong>可操作</strong></div>
+          <div class="summary-row"><span>订单履约</span><strong>可操作</strong></div>
+          <div class="summary-row"><span>支付环境</span><strong>本地模拟</strong></div>
         </div>
       </aside>
     </section>
   </main>
-
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/app.js"></script>
 </body>
