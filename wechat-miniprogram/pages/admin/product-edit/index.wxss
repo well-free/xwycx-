@@ -1,0 +1,3 @@
+.form-page .input { margin-bottom: 18rpx; }
+.pair { display: flex; gap: 16rpx; }.pair .input { min-width: 0; flex: 1; }
+.save { width: 100%; margin-top: 34rpx; }

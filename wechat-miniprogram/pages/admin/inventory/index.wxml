@@ -1,0 +1,1 @@
+<view class="page surface" wx:if="{{product}}"><view class="section-title">{{product.name}}</view><view class="meta">{{product.sku}} · 当前库存 {{product.stock}}</view><view class="section-title">调整后库存</view><input class="input" type="number" value="{{stock}}" bindinput="input" /><button class="primary save" bindtap="save">确认调整</button></view>

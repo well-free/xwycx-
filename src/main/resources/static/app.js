@@ -1,62 +1,79 @@
+const tokenKey = 'xwycx.token';
+const initialToken = localStorage.getItem(tokenKey) || '';
+
+if (!initialToken) {
+  window.location.replace(`/login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+}
+
 const state = {
+  token: initialToken,
+  user: null,
+  products: [],
+  selectedProductId: null,
   orders: [],
-  trades: [],
   payments: [],
   selectedPaymentId: null,
-  symbol: 'MASK-50',
-  side: 'BUY',
-  loading: false
+  productSearch: '',
+  productSort: 'hot',
+  productCategory: 'ALL',
+  orderStatusFilter: 'ALL',
+  initialPaymentOrderId: new URLSearchParams(window.location.search).get('orderId') || ''
 };
 
 const els = {
-  orderForm: document.getElementById('orderForm'),
-  orderResult: document.getElementById('orderResult'),
-  orderIdInput: document.getElementById('orderIdInput'),
-  productIdInput: document.getElementById('productIdInput'),
-  hotScoreInput: document.getElementById('hotScoreInput'),
-  productResult: document.getElementById('productResult'),
-  ordersTable: document.getElementById('ordersTable'),
-  tradesTable: document.getElementById('tradesTable'),
-  paymentsTable: document.getElementById('paymentsTable'),
   serverStatus: document.getElementById('serverStatus'),
-  cancelBtn: document.getElementById('cancelBtn'),
+  userStatus: document.getElementById('userStatus'),
   refreshBtn: document.getElementById('refreshBtn'),
-  productBtn: document.getElementById('productBtn'),
-  hotScoreBtn: document.getElementById('hotScoreBtn'),
-  catalogBtn: document.getElementById('catalogBtn'),
-  submitOrderBtn: document.getElementById('submitOrderBtn'),
+  logoutBtn: document.getElementById('logoutBtn'),
+  workspaceTabs: document.getElementById('workspaceTabs'),
+  productsGrid: document.getElementById('productsGrid'),
+  productSearchInput: document.getElementById('productSearchInput'),
+  productSortInput: document.getElementById('productSortInput'),
+  productCategories: document.getElementById('productCategories'),
+  selectedProduct: document.getElementById('selectedProduct'),
+  selectedTotal: document.getElementById('selectedTotal'),
+  quantityInput: document.getElementById('quantityInput'),
+  createOrderBtn: document.getElementById('createOrderBtn'),
+  orderStatusFilter: document.getElementById('orderStatusFilter'),
+  refreshOrdersBtn: document.getElementById('refreshOrdersBtn'),
+  ordersTable: document.getElementById('ordersTable'),
   paymentOrderIdInput: document.getElementById('paymentOrderIdInput'),
   paymentChannelInput: document.getElementById('paymentChannelInput'),
   paymentCreateBtn: document.getElementById('paymentCreateBtn'),
   paymentSuccessBtn: document.getElementById('paymentSuccessBtn'),
   paymentRefundBtn: document.getElementById('paymentRefundBtn'),
   paymentResult: document.getElementById('paymentResult'),
+  paymentsTable: document.getElementById('paymentsTable'),
+  adminSkuInput: document.getElementById('adminSkuInput'),
+  adminNameInput: document.getElementById('adminNameInput'),
+  adminPriceInput: document.getElementById('adminPriceInput'),
+  adminStockInput: document.getElementById('adminStockInput'),
+  adminCreateProductBtn: document.getElementById('adminCreateProductBtn'),
+  adminShipBtn: document.getElementById('adminShipBtn'),
+  adminResult: document.getElementById('adminResult'),
+  adminRoleChip: document.getElementById('adminRoleChip'),
+  metricUser: document.getElementById('metricUser'),
+  metricRole: document.getElementById('metricRole'),
+  metricProducts: document.getElementById('metricProducts'),
   metricOrders: document.getElementById('metricOrders'),
-  metricOpen: document.getElementById('metricOpen'),
-  metricTrades: document.getElementById('metricTrades'),
-  metricVolume: document.getElementById('metricVolume'),
-  metricLastPrice: document.getElementById('metricLastPrice'),
-  metricLastSymbol: document.getElementById('metricLastSymbol'),
-  metricSymbol: document.getElementById('metricSymbol'),
-  metricSpread: document.getElementById('metricSpread'),
+  metricPending: document.getElementById('metricPending'),
+  metricPaidOrders: document.getElementById('metricPaidOrders'),
   metricPayments: document.getElementById('metricPayments'),
   metricPaid: document.getElementById('metricPaid'),
-  bookSymbol: document.getElementById('bookSymbol'),
-  asksBook: document.getElementById('asksBook'),
-  bidsBook: document.getElementById('bidsBook'),
-  tradeTape: document.getElementById('tradeTape'),
-  lastTradeText: document.getElementById('lastTradeText'),
   toast: document.getElementById('toast')
 };
 
-const openStatuses = new Set(['NEW', 'PARTIALLY_FILLED']);
-const statusLabels = {
-  NEW: '待撮合',
-  PARTIALLY_FILLED: '部分成交',
-  FILLED: '已成交',
-  CANCELED: '已撤销',
-  TIMEOUT_CLOSED: '超时关闭'
+const orderStatusLabels = {
+  PENDING_PAYMENT: '待支付',
+  PAID: '已支付',
+  FULFILLING: '备货中',
+  SHIPPED: '已发货',
+  COMPLETED: '已完成',
+  CANCELED: '已取消',
+  REFUNDING: '退款中',
+  REFUNDED: '已退款'
 };
+
 const paymentStatusLabels = {
   PENDING: '待支付',
   PAYING: '支付中',
@@ -81,7 +98,7 @@ function formatNumber(value) {
   if (!Number.isFinite(number)) {
     return '--';
   }
-  return number.toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+  return number.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatTime(value) {
@@ -95,7 +112,30 @@ function formatTime(value) {
   }).format(new Date(value));
 }
 
+function productCategory(product) {
+  const text = `${product.name || ''} ${product.sku || ''} ${product.spec || ''}`.toLowerCase();
+  if (/(杯|餐盒|饭盒|筷|吸管|餐巾|纸盘|餐具|cup|box)/.test(text)) {
+    return 'DINING';
+  }
+  if (/(口罩|手套|清洁|消毒|抹布|垃圾袋|mask|glove)/.test(text)) {
+    return 'CLEANING';
+  }
+  return 'OFFICE';
+}
+
+function updateSelectedTotal() {
+  if (!els.selectedTotal) {
+    return;
+  }
+  const selected = state.products.find((product) => product.id === state.selectedProductId);
+  const quantity = Math.max(0, Number(els.quantityInput?.value || 0));
+  els.selectedTotal.textContent = selected ? `¥${formatNumber(Number(selected.price) * quantity)}` : '¥0.00';
+}
+
 function showToast(message, tone = 'info') {
+  if (!els.toast) {
+    return;
+  }
   els.toast.textContent = message;
   els.toast.dataset.tone = tone;
   els.toast.classList.add('show');
@@ -104,14 +144,23 @@ function showToast(message, tone = 'info') {
 }
 
 function setStatus(online) {
+  if (!els.serverStatus) {
+    return;
+  }
   els.serverStatus.classList.toggle('offline', !online);
   els.serverStatus.innerHTML = `<span class="health-dot"></span>${online ? '服务在线' : '服务离线'}`;
+}
+
+function redirectToLogin() {
+  localStorage.removeItem(tokenKey);
+  window.location.replace(`/login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
 }
 
 async function request(path, options = {}) {
   const response = await fetch(path, {
     headers: {
       'Content-Type': 'application/json',
+      ...(state.token ? { 'X-Session-Token': state.token } : {}),
       ...(options.headers || {})
     },
     ...options
@@ -129,31 +178,10 @@ async function request(path, options = {}) {
   return data;
 }
 
-function statusBadge(status) {
-  return `<span class="status-badge ${escapeHtml(status)}">${statusLabels[status] || status}</span>`;
-}
-
-function paymentBadge(status) {
-  return `<span class="payment-badge ${escapeHtml(status)}">${paymentStatusLabels[status] || status}</span>`;
-}
-
-function sideBadge(side) {
-  return `<span class="side-badge ${side === 'BUY' ? 'buy' : 'sell'}">${side === 'BUY' ? '买入' : '卖出'}</span>`;
-}
-
-function progressBar(order) {
-  const total = Number(order.originalQuantity) || 0;
-  const filled = Number(order.filledQuantity) || 0;
-  const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
-  return `
-    <div class="fill-cell">
-      <div class="fill-track"><span style="width:${Math.min(100, pct)}%"></span></div>
-      <small>${filled}/${total}</small>
-    </div>
-  `;
-}
-
 function renderTable(target, rows, columns, emptyText) {
+  if (!target) {
+    return;
+  }
   if (!rows.length) {
     target.innerHTML = `<div class="empty-state">${emptyText}</div>`;
     return;
@@ -166,58 +194,172 @@ function renderTable(target, rows, columns, emptyText) {
   target.innerHTML = `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
+function renderMetrics() {
+  const pending = state.orders.filter((order) => order.status === 'PENDING_PAYMENT').length;
+  const paidOrders = state.orders.filter((order) => ['PAID', 'FULFILLING', 'SHIPPED', 'COMPLETED'].includes(order.status)).length;
+  const paid = state.payments.filter((payment) => payment.status === 'SUCCESS' || payment.status === 'REFUNDED').length;
+  if (els.metricUser) {
+    els.metricUser.textContent = state.user ? state.user.phone : '未登录';
+  }
+  if (els.metricRole) {
+    els.metricRole.textContent = state.user
+      ? (state.user.role === 'ADMIN' ? '管理员账号' : '采购用户')
+      : '请先登录后下单';
+  }
+  if (els.userStatus) {
+    const role = state.user?.role === 'ADMIN' ? '管理员' : '采购用户';
+    els.userStatus.innerHTML = `<span class="health-dot"></span>${state.user ? `${state.user.phone} · ${role}` : '未登录'}`;
+  }
+  if (els.metricProducts) {
+    els.metricProducts.textContent = state.products.length;
+  }
+  if (els.metricOrders) {
+    els.metricOrders.textContent = state.orders.length;
+  }
+  if (els.metricPending) {
+    els.metricPending.textContent = `${pending} 笔待支付`;
+  }
+  if (els.metricPaidOrders) {
+    els.metricPaidOrders.textContent = paidOrders;
+  }
+  if (els.metricPayments) {
+    els.metricPayments.textContent = state.payments.length;
+  }
+  if (els.metricPaid) {
+    els.metricPaid.textContent = `${paid} 笔支付完成`;
+  }
+  if (els.adminRoleChip) {
+    els.adminRoleChip.textContent = state.user?.role === 'ADMIN' ? '管理员在线' : '需要管理员';
+    els.adminRoleChip.classList.toggle('success', state.user?.role === 'ADMIN');
+  }
+}
+
+function syncAdminVisibility() {
+  const isAdmin = state.user?.role === 'ADMIN';
+  const adminOnlyPage = document.body.classList.contains('admin-only-page');
+
+  if (adminOnlyPage && !isAdmin) {
+    window.location.replace('/index.html');
+    return;
+  }
+
+  document.body.classList.toggle('admin-verified', isAdmin);
+
+  document.querySelectorAll('.workspace-tabs').forEach((tabs) => {
+    let adminLink = tabs.querySelector('[data-admin-link]');
+    if (isAdmin && !adminLink) {
+      adminLink = document.createElement('a');
+      adminLink.href = '/admin.html';
+      adminLink.dataset.adminLink = 'true';
+      adminLink.textContent = '后台运营';
+      if (adminOnlyPage) {
+        adminLink.classList.add('active');
+      }
+      tabs.appendChild(adminLink);
+    }
+    if (!isAdmin && adminLink) {
+      adminLink.remove();
+    }
+  });
+
+  const dashboardLinks = document.querySelector('.dashboard-links');
+  if (dashboardLinks) {
+    let adminEntry = dashboardLinks.querySelector('[data-admin-entry]');
+    if (isAdmin && !adminEntry) {
+      adminEntry = document.createElement('a');
+      adminEntry.className = 'panel feature-entry';
+      adminEntry.href = '/admin.html';
+      adminEntry.dataset.adminEntry = 'true';
+      adminEntry.innerHTML = '<span>Admin</span><strong>后台运营</strong><small>管理员新增商品、维护库存并录入发货。</small>';
+      dashboardLinks.appendChild(adminEntry);
+    }
+    if (!isAdmin && adminEntry) {
+      adminEntry.remove();
+    }
+  }
+}
+
+function renderProducts() {
+  if (!els.productsGrid) {
+    return;
+  }
+  const keyword = state.productSearch.trim().toLowerCase();
+  const rows = state.products
+    .filter((product) => {
+      if (state.productCategory !== 'ALL' && productCategory(product) !== state.productCategory) {
+        return false;
+      }
+      if (!keyword) {
+        return true;
+      }
+      return [product.name, product.sku, product.spec, product.unit]
+        .some((value) => String(value || '').toLowerCase().includes(keyword));
+    })
+    .sort((a, b) => {
+      if (state.productSort === 'priceAsc') {
+        return Number(a.price) - Number(b.price);
+      }
+      if (state.productSort === 'stockDesc') {
+        return Number(b.stock) - Number(a.stock);
+      }
+      return Number(b.hotScore || 0) - Number(a.hotScore || 0);
+    });
+
+  if (!rows.length) {
+    els.productsGrid.innerHTML = '<div class="empty-state">暂无可采购商品</div>';
+    return;
+  }
+  els.productsGrid.innerHTML = rows.map((product) => {
+    const image = product.mainImage ? `<img src="${escapeHtml(product.mainImage)}" alt="${escapeHtml(product.name)}" loading="lazy" onerror="this.remove()" />` : '';
+    return `
+    <button type="button" class="product-card ${state.selectedProductId === product.id ? 'active' : ''}" data-product-id="${product.id}" aria-label="选择 ${escapeHtml(product.name)}">
+      <span class="product-media">${image}<b>${escapeHtml(product.sku || 'SKU')}</b></span>
+      <span class="product-info">
+        <strong>${escapeHtml(product.name)}</strong>
+        <small>${escapeHtml(product.sku)} · ${escapeHtml(product.spec)} · ${escapeHtml(product.unit)}</small>
+      </span>
+      <span class="product-meta">
+        <em>¥${formatNumber(product.price)}</em>
+        <small>库存 ${product.stock}</small>
+      </span>
+    </button>
+  `;
+  }).join('');
+  const selected = state.products.find((product) => product.id === state.selectedProductId);
+  if (els.selectedProduct) {
+    els.selectedProduct.innerHTML = selected
+      ? `<strong>${escapeHtml(selected.name)}</strong><span>${escapeHtml(selected.sku)} · ¥${formatNumber(selected.price)} · 库存 ${selected.stock} · ${escapeHtml(selected.spec)}</span>`
+      : '请选择商品';
+  }
+  updateSelectedTotal();
+}
+
 function renderOrders() {
-  const rows = [...state.orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  if (!els.ordersTable) {
+    return;
+  }
+  const rows = [...state.orders]
+    .filter((order) => state.orderStatusFilter === 'ALL' || order.status === state.orderStatusFilter)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   renderTable(
     els.ordersTable,
     rows,
     [
-      { label: '订单', render: (o) => `<button class="link-button" data-select-order="${o.id}">${o.id}</button>` },
-      { label: 'SKU', render: (o) => escapeHtml(o.symbol) },
-      { label: '方向', render: (o) => sideBadge(o.side) },
-      { label: '价格', render: (o) => formatNumber(o.price) },
-      { label: '成交进度', render: progressBar },
-      { label: '状态', render: (o) => statusBadge(o.status) },
-      { label: '更新时间', render: (o) => formatTime(o.updatedAt) },
-      {
-        label: '',
-        render: (o) => openStatuses.has(o.status)
-          ? `<button class="table-action" data-cancel-order="${o.id}">撤单</button>`
-          : '<span class="muted-text">--</span>'
-      }
+      { label: '订单', render: (o) => `<button class="link-button" data-select-order="${o.id}">${o.orderNo}</button>` },
+      { label: '金额', render: (o) => `¥${formatNumber(o.totalAmount)}` },
+      { label: '状态', render: (o) => `<span class="status-badge ${o.status}">${orderStatusLabels[o.status] || o.status}</span>` },
+      { label: '商品', render: (o) => escapeHtml(o.items?.[0]?.productName || '--') },
+      { label: '时间', render: (o) => formatTime(o.createdAt) },
+      { label: '操作', render: (o) => `<button class="table-action" data-select-order="${o.id}">${o.status === 'PENDING_PAYMENT' ? '去支付' : '查看'}</button>` }
     ],
-    '暂无订单，提交一笔买单或卖单后会显示在这里'
+    state.user ? '暂无订单，选择商品后创建采购单' : '登录后查看订单'
   );
-}
-
-function renderTrades() {
-  const rows = [...state.trades].sort((a, b) => new Date(b.executedAt) - new Date(a.executedAt));
-  renderTable(
-    els.tradesTable,
-    rows,
-    [
-      { label: '成交', render: (t) => escapeHtml(t.id) },
-      { label: 'SKU', render: (t) => escapeHtml(t.symbol) },
-      { label: '价格', render: (t) => formatNumber(t.price) },
-      { label: '数量', render: (t) => formatNumber(t.quantity) },
-      { label: '时间', render: (t) => formatTime(t.executedAt) }
-    ],
-    '暂无成交记录'
-  );
-
-  const latest = rows[0];
-  els.lastTradeText.textContent = latest ? `${latest.symbol} ${formatNumber(latest.price)}` : '暂无';
-  els.tradeTape.innerHTML = rows.slice(0, 6).map((trade) => `
-    <div class="tape-row">
-      <span>${escapeHtml(trade.symbol)}</span>
-      <strong>${formatNumber(trade.price)}</strong>
-      <span>${formatNumber(trade.quantity)} 包/箱</span>
-      <small>${formatTime(trade.executedAt)}</small>
-    </div>
-  `).join('') || '<div class="empty-state small">等待撮合成交</div>';
 }
 
 function renderPayments() {
+  if (!els.paymentsTable) {
+    return;
+  }
   const rows = [...state.payments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   renderTable(
     els.paymentsTable,
@@ -226,345 +368,273 @@ function renderPayments() {
       { label: '支付单', render: (p) => `<button class="link-button" data-select-payment="${p.id}">${p.id}</button>` },
       { label: '订单', render: (p) => escapeHtml(p.orderId) },
       { label: '渠道', render: (p) => p.channel === 'ALIPAY' ? '支付宝' : '微信' },
+      { label: '模式', render: (p) => escapeHtml(p.gatewayMode || 'mock') },
       { label: '金额', render: (p) => `¥${formatNumber(p.amount)}` },
-      { label: '状态', render: (p) => paymentBadge(p.status) },
-      { label: '过期时间', render: (p) => formatTime(p.expireAt) }
+      { label: '状态', render: (p) => paymentStatusLabels[p.status] || p.status }
     ],
     '暂无支付记录'
   );
 }
 
-function aggregateBook(side) {
-  const map = new Map();
-  state.orders
-    .filter((order) => order.symbol === state.symbol && order.side === side && openStatuses.has(order.status))
-    .forEach((order) => {
-      const price = Number(order.price);
-      const quantity = Number(order.remainingQuantity);
-      map.set(price, (map.get(price) || 0) + quantity);
-    });
-  return [...map.entries()]
-    .map(([price, quantity]) => ({ price, quantity }))
-    .sort((a, b) => side === 'BUY' ? b.price - a.price : a.price - b.price)
-    .slice(0, 5);
-}
-
-function renderBookList(target, rows, side) {
-  if (!rows.length) {
-    target.innerHTML = '<div class="empty-state small">暂无挂单</div>';
-    return;
-  }
-  const maxQuantity = Math.max(...rows.map((row) => row.quantity), 1);
-  target.innerHTML = rows.map((row) => {
-    const width = Math.max(8, Math.round((row.quantity / maxQuantity) * 100));
-    return `
-      <div class="book-row ${side.toLowerCase()}">
-        <span class="depth" style="width:${width}%"></span>
-        <strong>${formatNumber(row.price)}</strong>
-        <span>${formatNumber(row.quantity)} 包/箱</span>
-      </div>
-    `;
-  }).join('');
-}
-
-function renderMetrics() {
-  const openOrders = state.orders.filter((order) => openStatuses.has(order.status));
-  const totalVolume = state.trades.reduce((sum, trade) => sum + Number(trade.quantity || 0), 0);
-  const latestTrade = [...state.trades].sort((a, b) => new Date(b.executedAt) - new Date(a.executedAt))[0];
-  const bids = aggregateBook('BUY');
-  const asks = aggregateBook('SELL');
-  const bestBid = bids[0]?.price;
-  const bestAsk = asks[0]?.price;
-  const paidCount = state.payments.filter((payment) => payment.status === 'SUCCESS' || payment.status === 'REFUNDED').length;
-
-  els.metricOrders.textContent = state.orders.length;
-  els.metricOpen.textContent = `${openOrders.length} 个可撮合订单`;
-  els.metricTrades.textContent = state.trades.length;
-  els.metricVolume.textContent = `累计 ${formatNumber(totalVolume)} 包/箱`;
-  els.metricLastPrice.textContent = latestTrade ? formatNumber(latestTrade.price) : '--';
-  els.metricLastSymbol.textContent = latestTrade ? `${latestTrade.symbol} · ${formatTime(latestTrade.executedAt)}` : '暂无成交';
-  els.metricSymbol.textContent = state.symbol;
-  els.metricSpread.textContent = bestBid && bestAsk ? `买 ${formatNumber(bestBid)} / 卖 ${formatNumber(bestAsk)}` : '等待买卖盘';
-  els.metricPayments.textContent = state.payments.length;
-  els.metricPaid.textContent = `${paidCount} 笔已支付`;
-  els.bookSymbol.textContent = state.symbol;
-}
-
 function renderAll() {
   renderMetrics();
-  renderBookList(els.asksBook, aggregateBook('SELL'), 'SELL');
-  renderBookList(els.bidsBook, aggregateBook('BUY'), 'BUY');
+  renderProducts();
   renderOrders();
-  renderTrades();
   renderPayments();
 }
 
 async function refreshAll(silent = false) {
-  if (state.loading) {
-    return;
-  }
-  state.loading = true;
-  els.refreshBtn.classList.add('spinning');
   try {
-    const [health, orders, trades, payments] = await Promise.all([
+    const [health, products, payments] = await Promise.all([
       request('/api/health'),
-      request('/api/orders'),
-      request('/api/trades'),
-      request('/api/payments')
+      request('/api/products'),
+      request('/api/payments').catch(() => ({ items: [] }))
     ]);
-    state.orders = orders.items || [];
-    state.trades = trades.items || [];
-    state.payments = payments.items || [];
     setStatus(health.status === 'ok');
+    state.products = products.items || [];
+    state.payments = payments.items || [];
+    state.user = await request('/api/auth/me');
+    syncAdminVisibility();
+    const orders = await request('/api/customer-orders');
+    state.orders = orders.items || [];
+    if (!state.selectedProductId && state.products[0]) {
+      state.selectedProductId = state.products[0].id;
+    }
     renderAll();
+    if (state.initialPaymentOrderId && els.paymentOrderIdInput) {
+      els.paymentOrderIdInput.value = state.initialPaymentOrderId;
+      if (els.paymentResult) {
+        els.paymentResult.innerHTML = `<strong>已带入订单 ${escapeHtml(state.initialPaymentOrderId)}</strong><span>请选择支付渠道后发起支付</span>`;
+      }
+      state.initialPaymentOrderId = '';
+    }
     if (!silent) {
       showToast('数据已刷新');
     }
   } catch (error) {
     setStatus(false);
+    if (error.message.includes('login required') || error.message.includes('HTTP 401')) {
+      redirectToLogin();
+      return;
+    }
     showToast(error.message, 'error');
-  } finally {
-    state.loading = false;
-    els.refreshBtn.classList.remove('spinning');
   }
 }
 
-function setSide(side) {
-  state.side = side;
-  els.orderForm.elements.side.value = side;
-  document.querySelectorAll('.side-switch').forEach((button) => {
-    button.classList.toggle('active', button.dataset.side === side);
-  });
-  els.submitOrderBtn.textContent = side === 'BUY' ? '提交买单' : '提交卖单';
-  els.submitOrderBtn.classList.toggle('sell-mode', side === 'SELL');
-}
+els.logoutBtn?.addEventListener('click', async () => {
+  try {
+    await request('/api/auth/logout', { method: 'POST', body: '{}' });
+  } catch {
+  }
+  state.token = '';
+  state.user = null;
+  redirectToLogin();
+});
 
-async function cancelOrder(orderId) {
-  const id = String(orderId || '').trim();
-  if (!id) {
-    showToast('请输入订单 ID', 'error');
+document.addEventListener('click', (event) => {
+  const trigger = event.target.closest('[data-scroll-target]');
+  if (!trigger) {
+    return;
+  }
+  const target = document.getElementById(trigger.dataset.scrollTarget);
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  if (els.workspaceTabs && trigger.parentElement === els.workspaceTabs) {
+    [...els.workspaceTabs.querySelectorAll('button')].forEach((button) => button.classList.remove('active'));
+    trigger.classList.add('active');
+  }
+});
+
+els.productSearchInput?.addEventListener('input', () => {
+  state.productSearch = els.productSearchInput.value;
+  renderProducts();
+});
+
+els.productSortInput?.addEventListener('change', () => {
+  state.productSort = els.productSortInput.value;
+  renderProducts();
+});
+
+els.productCategories?.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-category]');
+  if (!button) {
+    return;
+  }
+  state.productCategory = button.dataset.category;
+  els.productCategories.querySelectorAll('[data-category]').forEach((item) => {
+    item.classList.toggle('active', item === button);
+  });
+  renderProducts();
+});
+
+els.quantityInput?.addEventListener('input', updateSelectedTotal);
+
+els.orderStatusFilter?.addEventListener('change', () => {
+  state.orderStatusFilter = els.orderStatusFilter.value;
+  renderOrders();
+});
+
+els.productsGrid?.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-product-id]');
+  if (!button) {
+    return;
+  }
+  state.selectedProductId = Number(button.dataset.productId);
+  renderProducts();
+});
+
+els.createOrderBtn?.addEventListener('click', async () => {
+  if (!state.selectedProductId) {
+    showToast('请先选择商品', 'error');
     return;
   }
   try {
-    const result = await request(`/api/orders/${id}/cancel`, {
+    const order = await request('/api/customer-orders', {
       method: 'POST',
-      body: '{}'
+      body: JSON.stringify({
+        items: [{ productId: state.selectedProductId, quantity: Number(els.quantityInput.value) }],
+        addressId: 1,
+        remark: '前端采购单'
+      })
     });
-    els.orderResult.textContent = `订单 ${result.id} 已撤销`;
-    els.orderIdInput.value = result.id;
-    showToast('撤单成功');
+    showToast('采购单已创建');
     await refreshAll(true);
+    if (els.paymentOrderIdInput) {
+      els.paymentOrderIdInput.value = order.id;
+      document.getElementById('paymentPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.location.href = `/orders.html?orderId=${order.id}`;
+    }
   } catch (error) {
     showToast(error.message, 'error');
   }
-}
+});
 
-els.orderForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const form = new FormData(els.orderForm);
-  const payload = {
-    symbol: String(form.get('symbol') || '').trim().toUpperCase(),
-    side: form.get('side'),
-    price: Number(form.get('price')),
-    quantity: Number(form.get('quantity'))
-  };
-  state.symbol = payload.symbol || state.symbol;
-  try {
-    const result = await request('/api/orders', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-    const tradesText = result.trades?.length ? `，生成 ${result.trades.length} 笔成交` : '，进入订单簿';
-    els.orderResult.textContent = `订单 ${result.order.id} 已提交${tradesText}`;
-    els.orderIdInput.value = result.order.id;
-    els.paymentOrderIdInput.value = result.order.id;
-    showToast('下单成功');
-    await refreshAll(true);
-  } catch (error) {
-    els.orderResult.textContent = error.message;
-    showToast(error.message, 'error');
+els.ordersTable?.addEventListener('click', (event) => {
+  const orderId = event.target.dataset.selectOrder;
+  if (orderId) {
+    els.paymentOrderIdInput.value = orderId;
+    showToast(`已选中订单 ${orderId}`);
   }
 });
 
-document.querySelectorAll('.side-switch').forEach((button) => {
-  button.addEventListener('click', () => setSide(button.dataset.side));
-});
-
-document.querySelectorAll('[data-price]').forEach((button) => {
-  button.addEventListener('click', () => {
-    els.orderForm.elements.price.value = button.dataset.price;
-  });
-});
-
-els.orderForm.elements.symbol.addEventListener('input', (event) => {
-  const value = event.target.value.trim().toUpperCase();
-  if (value) {
-    state.symbol = value;
-    renderMetrics();
-    renderBookList(els.asksBook, aggregateBook('SELL'), 'SELL');
-    renderBookList(els.bidsBook, aggregateBook('BUY'), 'BUY');
-  }
-});
-
-els.ordersTable.addEventListener('click', (event) => {
-  const selectId = event.target.dataset.selectOrder;
-  const cancelId = event.target.dataset.cancelOrder;
-  if (selectId) {
-    els.orderIdInput.value = selectId;
-    els.paymentOrderIdInput.value = selectId;
-    showToast(`已选中订单 ${selectId}`);
-  }
-  if (cancelId) {
-    cancelOrder(cancelId);
-  }
-});
-
-els.paymentsTable.addEventListener('click', (event) => {
+els.paymentsTable?.addEventListener('click', (event) => {
   const paymentId = event.target.dataset.selectPayment;
   if (!paymentId) {
     return;
   }
-  const payment = state.payments.find((item) => String(item.id) === String(paymentId));
   state.selectedPaymentId = paymentId;
+  const payment = state.payments.find((item) => String(item.id) === String(paymentId));
   if (payment) {
-    els.paymentOrderIdInput.value = payment.orderId;
-    els.paymentChannelInput.value = payment.channel;
-    els.paymentResult.innerHTML = `
-      <strong>已选中支付单 ${escapeHtml(payment.id)}</strong>
-      <span>${payment.channel === 'ALIPAY' ? '支付宝' : '微信支付'} · ¥${formatNumber(payment.amount)} · ${paymentStatusLabels[payment.status] || payment.status}</span>
-    `;
+    if (els.paymentOrderIdInput) {
+      els.paymentOrderIdInput.value = payment.orderId;
+    }
+    if (els.paymentResult) {
+      els.paymentResult.innerHTML = `<strong>已选中支付单 ${payment.id}</strong><span>${payment.channel} · ${escapeHtml(payment.gatewayMode || 'mock')} · ¥${formatNumber(payment.amount)} · ${paymentStatusLabels[payment.status] || payment.status}</span>`;
+    }
   }
 });
 
-els.cancelBtn.addEventListener('click', () => cancelOrder(els.orderIdInput.value));
-els.refreshBtn.addEventListener('click', () => refreshAll());
-
-els.productBtn.addEventListener('click', async () => {
-  const id = els.productIdInput.value.trim();
-  try {
-    const product = await request(`/api/products/${id}`);
-    els.productResult.innerHTML = `
-      <strong>${escapeHtml(product.name)}</strong>
-      <span>¥${formatNumber(product.price)} · 库存 ${formatNumber(product.stock)} · 热度 ${product.hotScore}</span>
-    `;
-    showToast('商品已加载');
-  } catch (error) {
-    els.productResult.textContent = error.message;
-    showToast(error.message, 'error');
-  }
-});
-
-els.hotScoreBtn.addEventListener('click', async () => {
-  const id = els.productIdInput.value.trim();
-  const score = els.hotScoreInput.value.trim();
-  try {
-    const product = await request(`/api/products/${id}/hot-score?score=${encodeURIComponent(score)}`, {
-      method: 'POST'
-    });
-    els.productResult.innerHTML = `
-      <strong>${escapeHtml(product.name)}</strong>
-      <span>热度已更新为 ${product.hotScore}</span>
-    `;
-    showToast('热度已更新');
-  } catch (error) {
-    els.productResult.textContent = error.message;
-    showToast(error.message, 'error');
-  }
-});
-
-els.catalogBtn.addEventListener('click', async () => {
-  try {
-    const result = await request('/api/admin/catalog/change?merchantId=1', { method: 'POST' });
-    els.productResult.innerHTML = `
-      <strong>缓存淘汰已触发</strong>
-      <span>商家 ${result.merchantId} 的目录变更已受理</span>
-    `;
-    showToast('模拟变更已发送');
-  } catch (error) {
-    els.productResult.textContent = error.message;
-    showToast(error.message, 'error');
-  }
-});
-
-els.paymentCreateBtn.addEventListener('click', async () => {
+els.paymentCreateBtn?.addEventListener('click', async () => {
   const orderId = els.paymentOrderIdInput.value.trim();
-  const channel = els.paymentChannelInput.value;
   if (!orderId) {
-    showToast('请先选择或输入订单 ID', 'error');
+    showToast('请先选择订单', 'error');
     return;
   }
   try {
-    const payment = await request('/api/payments', {
+    const payment = await request(`/api/customer-orders/${orderId}/payments`, {
       method: 'POST',
-      body: JSON.stringify({ orderId: Number(orderId), channel })
+      body: JSON.stringify({ channel: els.paymentChannelInput.value })
     });
     state.selectedPaymentId = payment.id;
-    els.paymentResult.innerHTML = `
-      <strong>支付单 ${escapeHtml(payment.id)} 已创建</strong>
-      <span>${payment.channel === 'ALIPAY' ? '支付宝' : '微信支付'} · ¥${formatNumber(payment.amount)}</span>
-      <span>${escapeHtml(payment.qrCode)}</span>
-    `;
+    if (els.paymentResult) {
+      els.paymentResult.innerHTML = `<strong>支付单 ${payment.id} 已创建</strong><span>${escapeHtml(payment.gatewayMode || 'mock')} · ¥${formatNumber(payment.amount)} · ${escapeHtml(payment.qrCode)}</span>`;
+    }
     showToast('支付单已创建');
     await refreshAll(true);
   } catch (error) {
-    els.paymentResult.textContent = error.message;
     showToast(error.message, 'error');
   }
 });
 
-els.paymentSuccessBtn.addEventListener('click', async () => {
-  const paymentId = state.selectedPaymentId || state.payments.find((payment) => String(payment.orderId) === els.paymentOrderIdInput.value.trim())?.id;
-  const payment = state.payments.find((item) => String(item.id) === String(paymentId));
+els.paymentSuccessBtn?.addEventListener('click', async () => {
+  const payment = state.payments.find((item) => String(item.id) === String(state.selectedPaymentId))
+    || state.payments.find((item) => String(item.orderId) === els.paymentOrderIdInput.value.trim());
   if (!payment) {
     showToast('请先创建或选择支付单', 'error');
     return;
   }
   try {
-    const result = await request(`/api/payments/callbacks/${payment.channel}`, {
-      method: 'POST',
-      body: JSON.stringify({
-        paymentId: payment.id,
-        notifyId: `ui-${Date.now()}`,
-        channelTradeNo: `MOCK-${payment.channel}-${payment.id}`,
-        amount: payment.amount,
-        status: 'SUCCESS',
-        signature: 'mock-signature'
-      })
-    });
-    els.paymentResult.innerHTML = `
-      <strong>支付回调已处理</strong>
-      <span>支付单 ${escapeHtml(result.id)} 状态：${paymentStatusLabels[result.status] || result.status}</span>
-    `;
-    showToast('支付成功回调已模拟');
+    await request(`/api/payments/${payment.id}/simulate-success`, { method: 'POST', body: '{}' });
+    showToast('支付回调已处理');
     await refreshAll(true);
   } catch (error) {
-    els.paymentResult.textContent = error.message;
     showToast(error.message, 'error');
   }
 });
 
-els.paymentRefundBtn.addEventListener('click', async () => {
+els.paymentRefundBtn?.addEventListener('click', async () => {
   const payment = state.payments.find((item) => String(item.id) === String(state.selectedPaymentId));
   if (!payment) {
     showToast('请先选择支付单', 'error');
     return;
   }
   try {
-    const refund = await request(`/api/payments/${payment.id}/refunds`, {
+    await request(`/api/customer-orders/${payment.orderId}/refunds`, {
       method: 'POST',
-      body: JSON.stringify({ amount: payment.amount, reason: '前端模拟退款' })
+      body: JSON.stringify({ amount: payment.amount, reason: '前端申请退款' })
     });
-    els.paymentResult.innerHTML = `
-      <strong>退款成功</strong>
-      <span>退款单 ${escapeHtml(refund.id)} · ¥${formatNumber(refund.amount)}</span>
-    `;
-    showToast('退款成功');
+    showToast('退款已提交');
     await refreshAll(true);
   } catch (error) {
-    els.paymentResult.textContent = error.message;
     showToast(error.message, 'error');
   }
 });
 
-setSide('BUY');
+els.adminCreateProductBtn?.addEventListener('click', async () => {
+  try {
+    const product = await request('/api/admin/products', {
+      method: 'POST',
+      body: JSON.stringify({
+        sku: els.adminSkuInput.value.trim(),
+        name: els.adminNameInput.value.trim(),
+        price: Number(els.adminPriceInput.value),
+        stock: Number(els.adminStockInput.value),
+        spec: '100只/盒',
+        unit: '盒',
+        status: 'ON_SHELF',
+        sortOrder: 90
+      })
+    });
+    if (els.adminResult) {
+      els.adminResult.textContent = `商品 ${product.sku} 已创建`;
+    }
+    showToast('商品已创建');
+    await refreshAll(true);
+  } catch (error) {
+    if (els.adminResult) {
+      els.adminResult.textContent = error.message;
+    }
+    showToast(error.message, 'error');
+  }
+});
+
+els.adminShipBtn?.addEventListener('click', async () => {
+  const orderId = els.paymentOrderIdInput.value.trim();
+  if (!orderId) {
+    showToast('请先选择订单', 'error');
+    return;
+  }
+  try {
+    await request(`/api/admin/orders/${orderId}/ship`, { method: 'POST', body: '{}' });
+    showToast('发货状态已更新');
+    await refreshAll(true);
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+});
+
+els.refreshBtn?.addEventListener('click', () => refreshAll());
+els.refreshOrdersBtn?.addEventListener('click', () => refreshAll());
 refreshAll(true);

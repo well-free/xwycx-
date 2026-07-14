@@ -1,0 +1,11 @@
+.checkout-page { padding-left: 0; padding-right: 0; }
+.address-band, .form-band, .payment-band, .summary, .order-items { padding-left: 28rpx; padding-right: 28rpx; background: #fff; }
+.address-band { padding-top: 12rpx; padding-bottom: 28rpx; }
+.compact { padding: 14rpx 0; }
+.receiver { margin-bottom: 8rpx; font-weight: 700; }
+.label { width: 160rpx; }
+.remark { flex: 1; text-align: right; }
+.radio { width: 36rpx; height: 36rpx; border: 2rpx solid #b9c3bf; border-radius: 50%; }
+.radio.selected { border: 10rpx solid #087f5b; }
+.submit { width: 240rpx; }
+.error { padding: 24rpx 28rpx; color: #e45d43; }

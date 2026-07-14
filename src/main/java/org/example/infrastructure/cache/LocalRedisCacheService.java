@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 @ConditionalOnProperty(prefix = "app.redis", name = "enabled", havingValue = "false", matchIfMissing = true)
@@ -15,6 +16,20 @@ public class LocalRedisCacheService implements CacheStore {
 
     public void put(String key, String value, Duration ttl) {
         cache.put(key, new Entry(value, System.currentTimeMillis() + ttl.toMillis()));
+    }
+
+    @Override
+    public boolean putIfAbsent(String key, String value, Duration ttl) {
+        long now = System.currentTimeMillis();
+        AtomicBoolean inserted = new AtomicBoolean(false);
+        cache.compute(key, (ignored, existing) -> {
+            if (existing == null || existing.expireAtMillis <= now) {
+                inserted.set(true);
+                return new Entry(value, now + ttl.toMillis());
+            }
+            return existing;
+        });
+        return inserted.get();
     }
 
     public Optional<String> get(String key) {

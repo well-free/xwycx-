@@ -24,6 +24,13 @@ public class RedisCacheService implements CacheStore {
     }
 
     @Override
+    public boolean putIfAbsent(String key, String value, Duration ttl) {
+        Object inserted = invoke(opsForValue(), "setIfAbsent",
+                new Class<?>[]{Object.class, Object.class, Duration.class}, key, value, ttl);
+        return Boolean.TRUE.equals(inserted);
+    }
+
+    @Override
     public Optional<String> get(String key) {
         Object value = invoke(opsForValue(), "get", new Class<?>[]{Object.class}, key);
         return Optional.ofNullable(value == null ? null : value.toString());

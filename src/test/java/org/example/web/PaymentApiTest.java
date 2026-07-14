@@ -12,7 +12,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -24,10 +23,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {
         "app.redis.enabled=false",
-        "app.mq.enabled=false"
+        "app.mq.enabled=false",
+        "spring.datasource.url=jdbc:h2:mem:payment_api_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false"
 })
 @AutoConfigureMockMvc
-@Transactional
 class PaymentApiTest {
     @Autowired
     private MockMvc mockMvc;
@@ -48,6 +47,7 @@ class PaymentApiTest {
 
     @Test
     void shouldCreateCallbackQueryAndRefundPaymentThroughHttp() throws Exception {
+        String adminToken = loginAdmin();
         long orderId = createOrder();
 
         String paymentBody = """
@@ -57,6 +57,7 @@ class PaymentApiTest {
                 }
                 """.formatted(orderId);
         String paymentJson = mockMvc.perform(post("/api/payments")
+                        .header("X-Session-Token", adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(paymentBody))
                 .andExpect(status().isOk())
@@ -81,7 +82,8 @@ class PaymentApiTest {
                         .content(callbackBody))
                 .andExpect(status().isOk());
 
-        String queryJson = mockMvc.perform(get("/api/payments/{id}", paymentId))
+        String queryJson = mockMvc.perform(get("/api/payments/{id}", paymentId)
+                        .header("X-Session-Token", adminToken))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -89,6 +91,7 @@ class PaymentApiTest {
         assertThat(JsonPath.read(queryJson, "$.status").toString()).isEqualTo("SUCCESS");
 
         mockMvc.perform(post("/api/payments/{id}/refunds", paymentId)
+                        .header("X-Session-Token", adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -98,17 +101,21 @@ class PaymentApiTest {
                                 """))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/payments"))
+        mockMvc.perform(get("/api/payments")
+                        .header("X-Session-Token", adminToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/payments/{id}/refunds", paymentId))
+        mockMvc.perform(get("/api/payments/{id}/refunds", paymentId)
+                        .header("X-Session-Token", adminToken))
                 .andExpect(status().isOk());
     }
 
     @Test
     void shouldRejectCallbackWithInvalidSignature() throws Exception {
+        String adminToken = loginAdmin();
         long orderId = createOrder();
         String paymentJson = mockMvc.perform(post("/api/payments")
+                        .header("X-Session-Token", adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -133,8 +140,38 @@ class PaymentApiTest {
                                   "status": "SUCCESS",
                                   "signature": "bad"
                                 }
-                                """.formatted(paymentId)))
+                """.formatted(paymentId)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldSimulateSuccessfulPaymentForMockOrSandboxMode() throws Exception {
+        String adminToken = loginAdmin();
+        long orderId = createOrder();
+        String paymentJson = mockMvc.perform(post("/api/payments")
+                        .header("X-Session-Token", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "orderId": %d,
+                                  "channel": "ALIPAY"
+                                }
+                                """.formatted(orderId)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        long paymentId = ((Number) JsonPath.read(paymentJson, "$.id")).longValue();
+
+        String simulatedJson = mockMvc.perform(post("/api/payments/{id}/simulate-success", paymentId)
+                        .header("X-Session-Token", adminToken))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(JsonPath.read(simulatedJson, "$.status").toString()).isEqualTo("SUCCESS");
+        assertThat(JsonPath.read(simulatedJson, "$.channelTradeNo").toString()).contains("SIM-ALIPAY-");
     }
 
     private long createOrder() throws Exception {
@@ -153,5 +190,20 @@ class PaymentApiTest {
                 .getResponse()
                 .getContentAsString();
         return ((Number) JsonPath.read(createResponse, "$.order.id")).longValue();
+    }
+
+    private String loginAdmin() throws Exception {
+        mockMvc.perform(post("/api/auth/sms/send")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"13900000000\"}"))
+                .andExpect(status().isOk());
+        String loginJson = mockMvc.perform(post("/api/auth/sms/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"13900000000\",\"code\":\"123456\"}"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return JsonPath.read(loginJson, "$.token");
     }
 }

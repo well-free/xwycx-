@@ -1,0 +1,1 @@
+.payment-row { padding: 24rpx 0; border-bottom: 1rpx solid #e2e8e5; }.no { font-weight: 700; }.amount { margin-top: 14rpx; }

@@ -1,0 +1,11 @@
+.login-page { min-height: 100vh; padding: 140rpx 52rpx 60rpx; background: #fff; }
+.brand { font-size: 54rpx; font-weight: 800; color: #17201d; }
+.intro { margin-top: 10rpx; color: #6b7571; }
+.login-tabs { margin-top: 70rpx; }
+.form { margin-top: 34rpx; }
+.form .input { margin-bottom: 20rpx; }
+.code-row { display: flex; gap: 16rpx; }
+.code-input { flex: 1; }
+.code-row button { width: 220rpx; }
+.login-button { width: 100%; margin-top: 34rpx; }
+.error { margin-top: 20rpx; color: #e45d43; }

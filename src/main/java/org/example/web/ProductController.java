@@ -1,6 +1,7 @@
 package org.example.web;
 
 import org.example.service.ProductService;
+import org.example.web.dto.ApiPageResponse;
 import org.example.web.dto.ProductResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,6 +22,12 @@ public class ProductController {
     @GetMapping("/{id}")
     public ProductResponse get(@PathVariable long id) {
         return productService.getProduct(id);
+    }
+
+    @GetMapping
+    public ApiPageResponse<ProductResponse> list() {
+        var items = productService.listProducts();
+        return new ApiPageResponse<>(items.size(), items);
     }
 
     @PostMapping("/{id}/hot-score")

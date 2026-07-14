@@ -1,0 +1,12 @@
+<view class="page surface">
+  <view class="home-head">
+    <view><text class="brand">小卫优采</text><text class="sub">常用采购</text></view>
+    <view class="cart-link" bindtap="checkout">采购车</view>
+  </view>
+  <input class="search" placeholder="搜索一次性用品" value="{{keyword}}" bindinput="search" />
+  <view class="tabs compact-tabs"><view class="tab active">全部商品</view><view class="tab">常用采购</view></view>
+  <view wx:if="{{loading}}" class="loading">正在加载商品...</view>
+  <view wx:elif="{{error}}" class="empty"><view>{{error}}</view><button class="secondary retry" bindtap="load">重试</button></view>
+  <view wx:elif="{{!items.length}}" class="empty">暂无匹配商品</view>
+  <product-card wx:for="{{items}}" wx:key="id" item="{{item}}" binddetail="detail" bindadd="add" />
+</view>

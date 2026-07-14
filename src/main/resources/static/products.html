@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0d5c3b" />
+  <title>商品采购 - 小物优采</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="app-shell commerce-app">
+    <header class="topbar commerce-topbar">
+      <a class="brand" href="/index.html" aria-label="小物优采首页"><span class="brand-mark">优</span><div><h1>小物优采</h1><p>xwycx.xyz</p></div></a>
+      <nav class="workspace-tabs" aria-label="页面导航"><a href="/index.html">首页</a><a class="active" href="/products.html">商品采购</a><a href="/orders.html">我的订单</a></nav>
+      <div class="topbar-actions">
+        <div class="health-pill" id="userStatus"><span class="health-dot"></span>未登录</div>
+        <div class="health-pill" id="serverStatus"><span class="health-dot"></span>连接中</div>
+        <button id="refreshBtn" type="button" class="icon-button" title="刷新数据" aria-label="刷新数据">↻</button>
+        <button id="logoutBtn" type="button" class="icon-button" title="退出登录" aria-label="退出登录">↪</button>
+      </div>
+    </header>
+
+    <section class="page-heading">
+      <div><p class="section-kicker">Procurement catalog</p><h2>商品采购</h2><p>餐饮耗材、清洁防护与办公日用，按库存直接创建采购订单。</p></div>
+    </section>
+
+    <section class="commerce-grid">
+      <section class="panel catalog-panel" aria-labelledby="productsTitle">
+        <div class="panel-head">
+          <div><p class="section-kicker">Catalog</p><h2 id="productsTitle">全部商品</h2></div>
+          <div class="catalog-tools">
+            <input id="productSearchInput" type="search" placeholder="搜索商品、SKU 或规格" autocomplete="off" />
+            <select id="productSortInput" aria-label="商品排序"><option value="hot">热度优先</option><option value="priceAsc">价格从低到高</option><option value="stockDesc">库存从高到低</option></select>
+          </div>
+        </div>
+        <div class="category-strip" id="productCategories" aria-label="商品分类">
+          <button type="button" class="active" data-category="ALL">全部商品</button>
+          <button type="button" data-category="DINING">餐饮耗材</button>
+          <button type="button" data-category="CLEANING">清洁防护</button>
+          <button type="button" data-category="OFFICE">办公日用</button>
+        </div>
+        <div id="productsGrid" class="product-grid"></div>
+      </section>
+
+      <aside class="checkout-column">
+        <section class="panel checkout-panel" aria-labelledby="quickTitle">
+          <div class="panel-head"><div><p class="section-kicker">Purchase list</p><h2 id="quickTitle">本次采购</h2></div><span class="chip">待确认</span></div>
+          <div class="checkout-panel-body">
+            <div id="selectedProduct" class="selected-product">请选择商品</div>
+            <div class="checkout-steps" id="checkoutSteps" aria-label="订单进度"><span class="active">选品</span><span>下单</span><span>支付</span><span>履约</span></div>
+            <div class="order-form checkout-form">
+              <label><span>采购数量</span><input id="quantityInput" type="number" min="1" value="10" /></label>
+              <div class="purchase-total"><span>商品小计</span><strong id="selectedTotal">¥0.00</strong></div>
+              <button id="createOrderBtn" type="button" class="primary-action">创建采购订单</button>
+            </div>
+            <div class="mini-output">订单创建后将进入支付页面。</div>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

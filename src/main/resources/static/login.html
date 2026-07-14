@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0d5c3b" />
+  <title>登录 - 小物优采</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="login-page">
+  <main class="login-shell">
+    <section class="login-hero" aria-label="小物优采登录">
+      <div class="brand login-brand"><span class="brand-mark">优</span><div><h1>小物优采</h1><p>xwycx.xyz</p></div></div>
+      <div class="login-copy"><strong>让每一次日常补货，都更简单。</strong><span id="smsModeHint">正在读取短信验证码配置。</span></div>
+    </section>
+
+    <section class="panel login-panel" aria-labelledby="loginTitle">
+      <div class="panel-head"><div><p class="section-kicker">Welcome back</p><h2 id="loginTitle">手机号登录</h2></div></div>
+      <div class="order-form login-form">
+        <label><span>手机号</span><input id="phoneInput" type="tel" value="13800000001" maxlength="11" autocomplete="tel" inputmode="numeric" placeholder="请输入 11 位手机号" /></label>
+        <label><span>验证码</span><input id="codeInput" type="text" value="123456" maxlength="6" autocomplete="one-time-code" inputmode="numeric" placeholder="6 位短信验证码" /></label>
+        <div class="button-row"><button id="smsBtn" type="button">发送验证码</button><button id="loginBtn" type="button" class="primary-action">登录</button><button id="registerBtn" type="button" class="secondary-action">注册新账号</button></div>
+      </div>
+      <div class="result-box" id="authResult" aria-live="polite">请输入手机号获取验证码；新手机号可直接注册。</div>
+      <p class="login-footnote">登录即表示你同意平台在订单履约范围内处理账号与收货信息。</p>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/login.js"></script>
+</body>
+</html>

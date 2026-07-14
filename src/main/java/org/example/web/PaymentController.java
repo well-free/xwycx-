@@ -2,6 +2,7 @@ package org.example.web;
 
 import jakarta.validation.Valid;
 import org.example.payment.PaymentChannel;
+import org.example.service.AuthService;
 import org.example.service.PaymentService;
 import org.example.web.dto.ApiPageResponse;
 import org.example.web.dto.PaymentCallbackRequest;
@@ -20,44 +21,60 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/payments")
 public class PaymentController {
     private final PaymentService paymentService;
+    private final AuthService authService;
 
-    public PaymentController(PaymentService paymentService) {
+    public PaymentController(PaymentService paymentService, AuthService authService) {
         this.paymentService = paymentService;
+        this.authService = authService;
     }
 
     @PostMapping
-    public PaymentResponse create(@Valid @RequestBody PaymentCreateRequest request) {
+    public PaymentResponse create(@org.springframework.web.bind.annotation.RequestHeader(value = "X-Session-Token", required = false) String token,
+                                  @Valid @RequestBody PaymentCreateRequest request) {
+        authService.requireAdmin(token);
         return paymentService.create(request);
     }
 
     @GetMapping("/{id}")
-    public PaymentResponse get(@PathVariable long id) {
-        return paymentService.get(id);
+    public PaymentResponse get(@org.springframework.web.bind.annotation.RequestHeader(value = "X-Session-Token", required = false) String token,
+                               @PathVariable long id) {
+        return paymentService.get(authService.requireUser(token), id);
     }
 
     @GetMapping
-    public ApiPageResponse<PaymentResponse> list() {
-        var items = paymentService.list();
+    public ApiPageResponse<PaymentResponse> list(@org.springframework.web.bind.annotation.RequestHeader(value = "X-Session-Token", required = false) String token) {
+        var items = paymentService.list(authService.requireUser(token));
         return new ApiPageResponse<>(items.size(), items);
     }
 
     @PostMapping("/{id}/close")
-    public PaymentResponse close(@PathVariable long id) {
-        return paymentService.close(id);
+    public PaymentResponse close(@org.springframework.web.bind.annotation.RequestHeader(value = "X-Session-Token", required = false) String token,
+                                 @PathVariable long id) {
+        return paymentService.close(authService.requireUser(token), id);
+    }
+
+    @PostMapping("/{id}/simulate-success")
+    public PaymentResponse simulateSuccess(@org.springframework.web.bind.annotation.RequestHeader(value = "X-Session-Token", required = false) String token,
+                                           @PathVariable long id) {
+        return paymentService.simulateSuccess(authService.requireUser(token), id);
     }
 
     @PostMapping("/callbacks/{channel}")
-    public PaymentResponse callback(@PathVariable PaymentChannel channel, @Valid @RequestBody PaymentCallbackRequest request) {
-        return paymentService.handleCallback(channel, request);
+    public PaymentResponse callback(@PathVariable String channel, @Valid @RequestBody PaymentCallbackRequest request) {
+        return paymentService.handleCallback(PaymentChannel.valueOf(channel.trim().toUpperCase()), request);
     }
 
     @PostMapping("/{id}/refunds")
-    public RefundResponse refund(@PathVariable long id, @Valid @RequestBody RefundCreateRequest request) {
-        return paymentService.refund(id, request);
+    public RefundResponse refund(@org.springframework.web.bind.annotation.RequestHeader(value = "X-Session-Token", required = false) String token,
+                                 @PathVariable long id,
+                                 @Valid @RequestBody RefundCreateRequest request) {
+        return paymentService.refund(authService.requireUser(token), id, request);
     }
 
     @GetMapping("/{id}/refunds")
-    public ApiPageResponse<RefundResponse> listRefunds(@PathVariable long id) {
+    public ApiPageResponse<RefundResponse> listRefunds(@org.springframework.web.bind.annotation.RequestHeader(value = "X-Session-Token", required = false) String token,
+                                                       @PathVariable long id) {
+        paymentService.get(authService.requireUser(token), id);
         var items = paymentService.listRefunds(id);
         return new ApiPageResponse<>(items.size(), items);
     }

@@ -12,10 +12,17 @@ public class ProductEntity {
     @TableId(type = IdType.INPUT)
     private Long id;
     private Long merchantId;
+    private String sku;
     private String name;
     private BigDecimal price;
     private long stock;
     private int hotScore;
+    private String mainImage;
+    private String detailImages;
+    private String spec;
+    private String unit;
+    private String status;
+    private int sortOrder;
     private Instant updatedAt;
 
     public Long getId() {
@@ -32,6 +39,14 @@ public class ProductEntity {
 
     public void setMerchantId(Long merchantId) {
         this.merchantId = merchantId;
+    }
+
+    public String getSku() {
+        return sku;
+    }
+
+    public void setSku(String sku) {
+        this.sku = sku;
     }
 
     public String getName() {
@@ -64,6 +79,54 @@ public class ProductEntity {
 
     public void setHotScore(int hotScore) {
         this.hotScore = hotScore;
+    }
+
+    public String getMainImage() {
+        return mainImage;
+    }
+
+    public void setMainImage(String mainImage) {
+        this.mainImage = mainImage;
+    }
+
+    public String getDetailImages() {
+        return detailImages;
+    }
+
+    public void setDetailImages(String detailImages) {
+        this.detailImages = detailImages;
+    }
+
+    public String getSpec() {
+        return spec;
+    }
+
+    public void setSpec(String spec) {
+        this.spec = spec;
+    }
+
+    public String getUnit() {
+        return unit;
+    }
+
+    public void setUnit(String unit) {
+        this.unit = unit;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public int getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(int sortOrder) {
+        this.sortOrder = sortOrder;
     }
 
     public Instant getUpdatedAt() {

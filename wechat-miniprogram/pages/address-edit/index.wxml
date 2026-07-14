@@ -1,0 +1,8 @@
+<view class="page surface form-page">
+  <input class="input" placeholder="收货人" data-field="receiverName" value="{{form.receiverName}}" bindinput="input" />
+  <input class="input" type="number" maxlength="11" placeholder="手机号" data-field="receiverPhone" value="{{form.receiverPhone}}" bindinput="input" />
+  <view class="region"><input class="input" placeholder="省" data-field="province" value="{{form.province}}" bindinput="input" /><input class="input" placeholder="市" data-field="city" value="{{form.city}}" bindinput="input" /><input class="input" placeholder="区/县" data-field="district" value="{{form.district}}" bindinput="input" /></view>
+  <textarea class="textarea" maxlength="500" placeholder="详细地址" data-field="detail" value="{{form.detail}}" bindinput="input" />
+  <view class="row between"><text>设为默认地址</text><switch color="#087f5b" checked="{{form.defaultAddress}}" bindchange="toggle" /></view>
+  <button class="primary save" loading="{{saving}}" bindtap="save">保存地址</button>
+</view>

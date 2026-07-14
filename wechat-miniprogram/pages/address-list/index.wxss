@@ -1,0 +1,6 @@
+.address-row { padding: 26rpx 0; border-bottom: 1rpx solid #e2e8e5; }
+.receiver { font-weight: 700; }
+.default { color: #087f5b; }
+.address-text { margin-top: 10rpx; }
+.actions { display: flex; justify-content: flex-end; gap: 32rpx; margin-top: 20rpx; }
+.full { width: 100%; }

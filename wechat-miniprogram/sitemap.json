@@ -1,0 +1,4 @@
+{
+  "desc": "xwycx disposable supplies ordering system",
+  "rules": [{ "action": "allow", "page": "*" }]
+}

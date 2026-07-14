@@ -23,8 +23,8 @@ public class OrderLockService implements DistributedLockService {
         boolean acquired = false;
         try {
             acquired = (boolean) invoke(lock, "tryLock",
-                    new Class<?>[]{long.class, long.class, TimeUnit.class},
-                    100L, 2_000L, TimeUnit.MILLISECONDS);
+                    new Class<?>[]{long.class, TimeUnit.class},
+                    3L, TimeUnit.SECONDS);
             if (!acquired) {
                 throw new IllegalStateException("lock busy");
             }

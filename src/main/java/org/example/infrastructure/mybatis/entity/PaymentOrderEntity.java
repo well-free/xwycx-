@@ -13,12 +13,15 @@ public class PaymentOrderEntity {
     @TableId(type = IdType.INPUT)
     private Long id;
     private Long orderId;
+    private String gatewayMode;
     private String channel;
     private BigDecimal amount;
     private String status;
     private String channelTradeNo;
     private String payUrl;
     private String qrCode;
+    private String prepayId;
+    private String paymentParameters;
     @Version
     private Long version;
     private Instant createdAt;
@@ -34,6 +37,10 @@ public class PaymentOrderEntity {
     public Long getOrderId() { return orderId; }
 
     public void setOrderId(Long orderId) { this.orderId = orderId; }
+
+    public String getGatewayMode() { return gatewayMode; }
+
+    public void setGatewayMode(String gatewayMode) { this.gatewayMode = gatewayMode; }
 
     public String getChannel() { return channel; }
 
@@ -58,6 +65,14 @@ public class PaymentOrderEntity {
     public String getQrCode() { return qrCode; }
 
     public void setQrCode(String qrCode) { this.qrCode = qrCode; }
+
+    public String getPrepayId() { return prepayId; }
+
+    public void setPrepayId(String prepayId) { this.prepayId = prepayId; }
+
+    public String getPaymentParameters() { return paymentParameters; }
+
+    public void setPaymentParameters(String paymentParameters) { this.paymentParameters = paymentParameters; }
 
     public Long getVersion() { return version; }
 

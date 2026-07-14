@@ -1,0 +1,1 @@
+<text class="status {{status === 'PENDING_PAYMENT' || status === 'REFUNDING' ? 'warn' : ''}}">{{label}}</text>

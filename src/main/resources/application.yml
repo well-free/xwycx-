@@ -9,6 +9,8 @@ spring:
   sql:
     init:
       mode: always
+  flyway:
+    enabled: false
   data:
     redis:
       repositories:
@@ -24,9 +26,26 @@ app:
     enabled: false
   mq:
     enabled: false
+    customer-order-timeout-topic: customer-order-timeout-topic
   order:
     timeout-seconds: 15
     cache-ttl-seconds: 120
     empty-ttl-seconds: 30
   payment:
     timeout-seconds: 300
+    mode: mock
+    callback-secret: mock-signature
+    callback-base-url: https://xwycx.xyz
+    alipay-app-id: sandbox-local-app
+    alipay-sandbox-gateway-url: https://openapi-sandbox.dl.alipaydev.com/gateway.do
+    compensation-enabled: true
+    compensation-retry-interval-ms: 60000
+  sms:
+    provider: local
+    local-code: 123456
+    code-length: 6
+    code-ttl-seconds: 300
+  wechat:
+    app-id: local-app
+    app-secret: ""
+    code2-session-url: https://api.weixin.qq.com/sns/jscode2session

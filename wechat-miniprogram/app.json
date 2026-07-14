@@ -1,0 +1,43 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/category/index",
+    "pages/cart/index",
+    "pages/profile/index",
+    "pages/login/index",
+    "pages/product-detail/index",
+    "pages/checkout/index",
+    "pages/address-list/index",
+    "pages/address-edit/index",
+    "pages/order-list/index",
+    "pages/order-detail/index",
+    "pages/refund/index",
+    "pages/admin/home/index",
+    "pages/admin/products/index",
+    "pages/admin/product-edit/index",
+    "pages/admin/inventory/index",
+    "pages/admin/orders/index",
+    "pages/admin/shipment/index",
+    "pages/admin/refunds/index",
+    "pages/admin/payments/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "小卫优采",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f7f6"
+  },
+  "tabBar": {
+    "color": "#6b7571",
+    "selectedColor": "#087f5b",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/category/index", "text": "分类" },
+      { "pagePath": "pages/cart/index", "text": "购物车" },
+      { "pagePath": "pages/profile/index", "text": "我的" }
+    ]
+  },
+  "sitemapLocation": "sitemap.json"
+}
