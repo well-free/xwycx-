@@ -23,6 +23,7 @@ import org.example.web.dto.CustomerOrderCreateRequest;
 import org.example.web.dto.CustomerOrderItemRequest;
 import org.example.web.dto.PaymentCallbackRequest;
 import org.example.web.dto.PaymentCreateRequest;
+import org.example.web.dto.ShipmentRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,6 +64,8 @@ import static org.mockito.Mockito.inOrder;
 class CustomerOrderLifecycleTest {
     private static final AuthUserResponse USER =
             new AuthUserResponse(701L, "13800000701", UserRole.CUSTOMER);
+    private static final AuthUserResponse ADMIN =
+            new AuthUserResponse(1L, "13900000000", UserRole.ADMIN);
     private static final long ADDRESS_ID = 9701L;
     private static final long PRODUCT_ONE_ID = 9201L;
     private static final long PRODUCT_TWO_ID = 9202L;
@@ -475,6 +478,22 @@ class CustomerOrderLifecycleTest {
         assertThat(orderMapper.selectById(order.id()).getStatus()).isEqualTo(CustomerOrderStatus.PAID.name());
         assertThat(stock(PRODUCT_ONE_ID)).isEqualTo(4L);
         assertThat(restorationLogCount(order.id())).isZero();
+    }
+
+    @Test
+    void shipmentPersistsCarrierAndTrackingNumber() {
+        var order = createOrder(PRODUCT_ONE_ID);
+        var payment = createPayment(order.id(), order.totalAmount());
+        paymentService.handleCallback(PaymentChannel.ALIPAY,
+                success(payment.id(), payment.amount(), "paid-before-shipment"));
+
+        var shipped = customerOrderService.ship(
+                ADMIN, order.id(), new ShipmentRequest("SF Express", "SF123456789"));
+
+        assertThat(shipped.status()).isEqualTo(CustomerOrderStatus.SHIPPED);
+        assertThat(shipped.shippingCarrier()).isEqualTo("SF Express");
+        assertThat(shipped.trackingNo()).isEqualTo("SF123456789");
+        assertThat(orderMapper.selectById(order.id()).getTrackingNo()).isEqualTo("SF123456789");
     }
 
     private org.example.web.dto.CustomerOrderResponse createOrder(long... productIds) {

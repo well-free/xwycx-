@@ -1,0 +1,3 @@
+.placeholder { display: flex; align-items: center; justify-content: center; color: #087f5b; background: #e9f6f1; font-weight: 700; }
+.foot { margin-top: 16rpx; }
+.add { min-width: 150rpx; background: #087f5b; color: #fff; font-size: 24rpx; }

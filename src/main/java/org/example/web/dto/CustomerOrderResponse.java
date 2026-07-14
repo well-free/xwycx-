@@ -20,5 +20,7 @@ public record CustomerOrderResponse(
         Instant updatedAt,
         Instant paidAt,
         Instant shippedAt,
-        Instant canceledAt) {
+        Instant canceledAt,
+        String shippingCarrier,
+        String trackingNo) {
 }

@@ -1,0 +1,13 @@
+{
+  "appid": "touristappid",
+  "projectname": "xwycx-disposable-order",
+  "compileType": "miniprogram",
+  "libVersion": "latest",
+  "setting": {
+    "useCompilerPlugins": false,
+    "es6": true,
+    "minified": true,
+    "postcss": true,
+    "urlCheck": false
+  }
+}

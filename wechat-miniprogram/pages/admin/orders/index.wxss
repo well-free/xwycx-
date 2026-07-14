@@ -1,0 +1,1 @@
+.admin-order { padding: 24rpx 0; border-bottom: 1rpx solid #e2e8e5; }.no { font-weight: 700; }.foot { margin-top: 18rpx; }.ship { min-height: 64rpx; font-size: 24rpx; }

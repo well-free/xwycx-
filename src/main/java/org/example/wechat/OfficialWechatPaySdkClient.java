@@ -15,8 +15,10 @@ import com.wechat.pay.java.service.refund.RefundService;
 import com.wechat.pay.java.service.refund.model.AmountReq;
 import com.wechat.pay.java.service.refund.model.CreateRequest;
 import com.wechat.pay.java.service.refund.model.Refund;
+import com.wechat.pay.java.service.refund.model.RefundNotification;
 import com.wechat.pay.java.service.refund.model.Status;
 import org.example.config.AppProperties;
+import org.example.config.ProductionConfigurationValidator;
 import org.example.payment.PaymentRefundResult;
 import org.example.refund.RefundStatus;
 import org.example.web.BusinessException;
@@ -39,8 +41,10 @@ public class OfficialWechatPaySdkClient implements WechatPaySdkClient {
     private final RefundService refundService;
     private final NotificationParser notificationParser;
 
-    public OfficialWechatPaySdkClient(AppProperties properties, ObjectMapper objectMapper) {
-        validateConfiguration(properties);
+    public OfficialWechatPaySdkClient(AppProperties properties,
+                                      ObjectMapper objectMapper,
+                                      ProductionConfigurationValidator validator) {
+        validator.validateWechatPayment(properties);
         this.properties = properties;
         this.objectMapper = objectMapper;
         RSAAutoCertificateConfig config = new RSAAutoCertificateConfig.Builder()
@@ -140,6 +144,30 @@ public class OfficialWechatPaySdkClient implements WechatPaySdkClient {
         }
     }
 
+    @Override
+    public WechatPayRefundNotification verifyRefundNotification(String body,
+                                                                 String serial,
+                                                                 String timestamp,
+                                                                 String nonce,
+                                                                 String signature) {
+        RequestParam requestParam = new RequestParam.Builder()
+                .serialNumber(serial)
+                .timestamp(timestamp)
+                .nonce(nonce)
+                .signature(signature)
+                .body(body)
+                .build();
+        try {
+            RefundNotification notification = notificationParser.parse(requestParam, RefundNotification.class);
+            return new WechatPayRefundNotification(
+                    Long.parseLong(notification.getOutRefundNo()),
+                    notification.getRefundId(),
+                    mapRefundStatus(notification.getRefundStatus()));
+        } catch (RuntimeException exception) {
+            throw BusinessException.badRequest("invalid wechat refund callback");
+        }
+    }
+
     private void validateMerchant(Transaction transaction) {
         if (!properties.getWechat().getAppId().equals(transaction.getAppid())
                 || !properties.getPayment().getWechatMchId().equals(transaction.getMchid())) {
@@ -173,19 +201,4 @@ public class OfficialWechatPaySdkClient implements WechatPaySdkClient {
         return RefundStatus.FAILED;
     }
 
-    private static void validateConfiguration(AppProperties properties) {
-        require(properties.getWechat().getAppId(), "wechat app id");
-        require(properties.getPayment().getWechatMchId(), "wechat merchant id");
-        require(properties.getPayment().getWechatMerchantSerialNumber(), "wechat merchant serial number");
-        require(properties.getPayment().getWechatPrivateKeyPath(), "wechat private key path");
-        require(properties.getPayment().getWechatApiV3Key(), "wechat api v3 key");
-        require(properties.getPayment().getWechatNotifyUrl(), "wechat notify url");
-        require(properties.getPayment().getWechatRefundNotifyUrl(), "wechat refund notify url");
-    }
-
-    private static void require(String value, String name) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException(name + " is not configured");
-        }
-    }
 }

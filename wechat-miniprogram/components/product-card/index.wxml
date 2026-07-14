@@ -1,0 +1,13 @@
+<view class="product-row">
+  <image wx:if="{{item.mainImage}}" class="thumb" src="{{item.mainImage}}" mode="aspectFill" bindtap="detail" />
+  <view wx:else class="thumb placeholder" bindtap="detail">{{shortName}}</view>
+  <view class="product-main">
+    <view class="product-name" bindtap="detail">{{item.name}}</view>
+    <view class="meta">{{item.sku}} · {{item.spec || '标准规格'}} · {{item.unit || '件'}}</view>
+    <view class="meta">库存 {{item.stock}}</view>
+    <view class="between foot">
+      <text class="price">¥{{item.price}}</text>
+      <button class="add" size="mini" disabled="{{item.stock <= 0}}" bindtap="add">{{item.stock > 0 ? '加入采购车' : '已售罄'}}</button>
+    </view>
+  </view>
+</view>

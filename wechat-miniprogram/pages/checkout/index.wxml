@@ -1,0 +1,13 @@
+<view class="page checkout-page">
+  <view class="address-band" bindtap="chooseAddress">
+    <view class="between"><text class="section-title compact">配送地址</text><text class="muted">选择 ›</text></view>
+    <view wx:if="{{address}}"><view class="receiver">{{address.receiverName}} {{address.receiverPhone}}</view><view class="muted">{{address.province}}{{address.city}}{{address.district}}{{address.detail}}</view></view>
+    <view wx:else class="danger">请添加配送地址</view>
+  </view>
+  <view class="section order-items"><view class="section-title">采购明细</view><view wx:for="{{items}}" wx:key="productId" class="row between"><view><view>{{item.name}}</view><view class="meta">{{item.spec || '标准规格'}} × {{item.quantity}}</view></view><text>¥{{item.currentPrice}}</text></view></view>
+  <view class="section form-band"><view class="row"><text class="label">订单备注</text><input class="remark" placeholder="工作日配送" value="{{remark}}" bindinput="remarkInput" /></view></view>
+  <view class="section payment-band"><view class="section-title">支付方式</view><view class="row between" data-channel="WECHAT" bindtap="chooseChannel"><text>微信支付</text><text class="radio {{channel === 'WECHAT' ? 'selected' : ''}}"></text></view><view class="row between" data-channel="ALIPAY" bindtap="chooseChannel"><text>支付宝</text><text class="radio {{channel === 'ALIPAY' ? 'selected' : ''}}"></text></view></view>
+  <view class="section summary"><view class="row between"><text>商品金额</text><text>¥{{total}}</text></view><view class="row between"><text>应付金额</text><text class="price">¥{{total}}</text></view></view>
+  <view wx:if="{{error}}" class="error">{{error}}</view>
+  <view class="fixed-action between"><view><text class="muted">应付 </text><text class="price">¥{{total}}</text></view><button class="primary submit" loading="{{submitting}}" bindtap="submit">提交订单</button></view>
+</view>

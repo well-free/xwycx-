@@ -26,6 +26,8 @@ public class CustomerOrderEntity {
     private Instant paidAt;
     private Instant shippedAt;
     private Instant canceledAt;
+    private String shippingCarrier;
+    private String trackingNo;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -55,4 +57,8 @@ public class CustomerOrderEntity {
     public void setShippedAt(Instant shippedAt) { this.shippedAt = shippedAt; }
     public Instant getCanceledAt() { return canceledAt; }
     public void setCanceledAt(Instant canceledAt) { this.canceledAt = canceledAt; }
+    public String getShippingCarrier() { return shippingCarrier; }
+    public void setShippingCarrier(String shippingCarrier) { this.shippingCarrier = shippingCarrier; }
+    public String getTrackingNo() { return trackingNo; }
+    public void setTrackingNo(String trackingNo) { this.trackingNo = trackingNo; }
 }

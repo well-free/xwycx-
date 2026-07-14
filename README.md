@@ -1,5 +1,7 @@
 # xwycx.xyz 一次性用品订单交易系统
 
+> 当前同时提供 Web 页面和原生微信小程序。小程序源码位于 `wechat-miniprogram/`，支持微信登录与短信登录、商品采购、购物车、地址、订单、mock 支付、微信支付 API v3 参数、退款及管理员工作台。开发与上线说明见 `docs/wechat-miniprogram.md`、`docs/wechat-pay-v3.md` 和 `docs/deployment.md`。
+
 一个面向一次性用品供应和采购场景的商城采购系统，域名为 `xwycx.xyz`。系统覆盖手机号登录、商品浏览、采购订单、支付、退款、后台商品运营、商品缓存、限流和部署上线配置。默认使用 H2 内存库便于本地运行，生产 profile 使用 MySQL、Redis、RocketMQ、Flyway 和 Nginx。
 
 ## 技术栈

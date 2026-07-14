@@ -1,0 +1,4 @@
+.cart-row { display: flex; gap: 22rpx; padding: 24rpx 0; border-bottom: 1rpx solid #e2e8e5; }
+.placeholder { display: flex; align-items: center; justify-content: center; color: #087f5b; background: #e9f6f1; font-weight: 700; }
+.cart-foot { margin-top: 20rpx; }
+.checkout { width: 230rpx; }

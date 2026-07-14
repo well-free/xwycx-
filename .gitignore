@@ -3,6 +3,14 @@ target/
 .jdks/
 .agents/
 .codex/
+.superpowers/
+wechat-miniprogram/project.private.config.json
+.env
+.env.*
+*.pem
+*.p12
+*.pfx
+*.key
 cp*.txt
 sources-main.txt
 *.log

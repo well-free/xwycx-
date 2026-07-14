@@ -1,0 +1,2 @@
+.status { color: #087f5b; font-weight: 700; }
+.warn { color: #e45d43; }

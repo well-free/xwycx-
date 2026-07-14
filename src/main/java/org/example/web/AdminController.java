@@ -4,11 +4,16 @@ import org.example.infrastructure.canal.CatalogChangeListener;
 import org.example.service.AuthService;
 import org.example.service.CustomerOrderService;
 import org.example.service.ProductService;
+import org.example.service.PaymentService;
+import org.example.web.dto.ApiPageResponse;
 import org.example.web.dto.CustomerOrderResponse;
 import org.example.web.dto.ProductResponse;
 import org.example.web.dto.ProductUpsertRequest;
+import org.example.web.dto.ShipmentRequest;
+import org.example.web.dto.RefundResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,15 +31,41 @@ public class AdminController {
     private final AuthService authService;
     private final ProductService productService;
     private final CustomerOrderService customerOrderService;
+    private final PaymentService paymentService;
 
     public AdminController(CatalogChangeListener catalogChangeListener,
                            AuthService authService,
                            ProductService productService,
-                           CustomerOrderService customerOrderService) {
+                           CustomerOrderService customerOrderService,
+                           PaymentService paymentService) {
         this.catalogChangeListener = catalogChangeListener;
         this.authService = authService;
         this.productService = productService;
         this.customerOrderService = customerOrderService;
+        this.paymentService = paymentService;
+    }
+
+    @GetMapping("/orders")
+    public ApiPageResponse<?> listOrders(
+            @RequestHeader(value = "X-Session-Token", required = false) String token) {
+        var items = customerOrderService.list(authService.requireAdmin(token));
+        return new ApiPageResponse<>(items.size(), items);
+    }
+
+    @GetMapping("/refunds")
+    public ApiPageResponse<?> listRefunds(
+            @RequestHeader(value = "X-Session-Token", required = false) String token) {
+        authService.requireAdmin(token);
+        var items = paymentService.listRefunds();
+        return new ApiPageResponse<>(items.size(), items);
+    }
+
+    @GetMapping("/payments")
+    public ApiPageResponse<?> listPayments(
+            @RequestHeader(value = "X-Session-Token", required = false) String token) {
+        authService.requireAdmin(token);
+        var items = paymentService.list();
+        return new ApiPageResponse<>(items.size(), items);
     }
 
     @PostMapping("/catalog/change")
@@ -70,14 +101,15 @@ public class AdminController {
 
     @PostMapping("/orders/{id}/ship")
     public CustomerOrderResponse ship(@RequestHeader(value = "X-Session-Token", required = false) String token,
-                                      @PathVariable long id) {
-        return customerOrderService.ship(authService.requireAdmin(token), id);
+                                      @PathVariable long id,
+                                      @Valid @RequestBody ShipmentRequest request) {
+        return customerOrderService.ship(authService.requireAdmin(token), id, request);
     }
 
     @PostMapping("/refunds/{id}/approve")
-    public Map<String, Object> approveRefund(@RequestHeader(value = "X-Session-Token", required = false) String token,
-                                             @PathVariable long id) {
+    public RefundResponse approveRefund(@RequestHeader(value = "X-Session-Token", required = false) String token,
+                                        @PathVariable long id) {
         authService.requireAdmin(token);
-        return Map.of("message", "refund approved", "refundId", id);
+        return paymentService.approveRefund(id);
     }
 }

@@ -4,6 +4,8 @@ import org.example.payment.PaymentChannel;
 import org.example.service.PaymentService;
 import org.example.wechat.WechatPayCallbackVerifier;
 import org.example.web.dto.PaymentCallbackRequest;
+import org.example.wechat.WechatPayRefundNotification;
+import org.example.refund.RefundStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -51,5 +53,23 @@ class WechatPayCallbackApiTest {
                 .andExpect(jsonPath("$.code").value("SUCCESS"));
 
         verify(paymentService).handleVerifiedCallback(PaymentChannel.WECHAT, command);
+    }
+
+    @Test
+    void shouldVerifyRawWechatRefundCallbackBeforeUpdatingRefund() throws Exception {
+        when(verifier.verifyRefund(anyString(), anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(new WechatPayRefundNotification(21L, "wx-refund-21", RefundStatus.SUCCESS));
+
+        mockMvc.perform(post("/api/payments/callbacks/wechat/refund")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Wechatpay-Serial", "serial-1")
+                        .header("Wechatpay-Timestamp", "1710000000")
+                        .header("Wechatpay-Nonce", "nonce-1")
+                        .header("Wechatpay-Signature", "signature-1")
+                        .content("{\"id\":\"refund-notify-21\",\"resource\":{}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS"));
+
+        verify(paymentService).handleVerifiedRefund(21L, "wx-refund-21", RefundStatus.SUCCESS);
     }
 }

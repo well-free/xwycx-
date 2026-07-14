@@ -87,6 +87,41 @@ public class PaymentCompensationService {
                 lifecycleService.withOrderLock(orderId, () -> attemptLocked(orderId, paymentId)));
     }
 
+    public void handleGatewayNotification(long refundId,
+                                          String channelRefundNo,
+                                          RefundStatus gatewayStatus) {
+        RefundOrderEntity refund = refundMapper.selectById(refundId);
+        if (refund == null) {
+            throw BusinessException.notFound("refund not found");
+        }
+        PaymentOrderEntity payment = paymentMapper.selectById(refund.getPaymentId());
+        if (payment == null) {
+            throw BusinessException.notFound("payment not found");
+        }
+        CustomerOrderEntity order = orderMapper.selectById(payment.getOrderId());
+        Runnable action = () -> {
+            if (gatewayStatus == RefundStatus.SUCCESS) {
+                boolean refundOrder = order != null
+                        && CustomerOrderStatus.REFUNDING.name().equals(order.getStatus());
+                finish(payment.getOrderId(), payment.getId(), refundId, refundOrder,
+                        new PaymentRefundResult(channelRefundNo, RefundStatus.SUCCESS));
+            } else {
+                recordGatewayState(refundId, new PaymentRefundResult(channelRefundNo, gatewayStatus));
+            }
+        };
+        lockService.withLock("payment:id:" + payment.getId(), () -> {
+            if (order == null) {
+                action.run();
+            } else {
+                lifecycleService.withOrderLock(order.getId(), () -> {
+                    action.run();
+                    return null;
+                });
+            }
+            return null;
+        });
+    }
+
     @Scheduled(fixedDelayString = "${app.payment.compensation-retry-interval-ms:60000}")
     public void scheduledRetry() {
         if (properties.getPayment().isCompensationEnabled()) {
@@ -176,7 +211,7 @@ public class PaymentCompensationService {
             RefundOrderEntity refund = refundMapper.selectById(refundId);
             PaymentOrderEntity payment = paymentMapper.selectById(paymentId);
             CustomerOrderEntity order = orderMapper.selectById(orderId);
-            if (refund == null || payment == null || order == null) {
+            if (refund == null || payment == null) {
                 throw BusinessException.conflict("compensation state is missing");
             }
             if (!RefundStatus.SUCCESS.name().equals(refund.getStatus())) {
@@ -197,7 +232,7 @@ public class PaymentCompensationService {
                         .setSql("version = version + 1"));
                 requireSingleUpdate(paymentUpdated, "compensation payment update conflicted");
             }
-            if (refundOrder
+            if (order != null && refundOrder
                     && completedRefundTotal(paymentId).compareTo(payment.getAmount()) >= 0
                     && !CustomerOrderStatus.REFUNDED.name().equals(order.getStatus())) {
                 int orderUpdated = orderMapper.update(null, new LambdaUpdateWrapper<CustomerOrderEntity>()

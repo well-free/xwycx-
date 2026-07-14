@@ -18,4 +18,10 @@ public interface WechatPaySdkClient {
                                               String timestamp,
                                               String nonce,
                                               String signature);
+
+    WechatPayRefundNotification verifyRefundNotification(String body,
+                                                          String serial,
+                                                          String timestamp,
+                                                          String nonce,
+                                                          String signature);
 }

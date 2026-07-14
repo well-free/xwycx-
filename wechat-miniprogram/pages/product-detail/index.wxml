@@ -1,0 +1,10 @@
+<view class="page surface" wx:if="{{item}}">
+  <image wx:if="{{item.mainImage}}" class="hero-image" src="{{item.mainImage}}" mode="aspectFit" />
+  <view wx:else class="hero-image fallback">{{item.name}}</view>
+  <view class="detail-name">{{item.name}}</view>
+  <view class="meta">SKU {{item.sku}} · {{item.spec || '标准规格'}} · {{item.unit || '件'}}</view>
+  <view class="between detail-price"><text class="price">¥{{item.price}}</text><text class="muted">库存 {{item.stock}}</text></view>
+  <view class="row between"><text>采购数量</text><view class="stepper"><text data-delta="-1" bindtap="step">−</text><text class="value">{{quantity}}</text><text data-delta="1" bindtap="step">＋</text></view></view>
+  <view class="section-title">商品说明</view><view class="muted">{{item.detailImages || '适用于门店、餐饮、办公等日常消耗场景。'}}</view>
+  <view class="fixed-action"><button class="primary" disabled="{{item.stock <= 0}}" bindtap="add">加入采购车</button></view>
+</view>

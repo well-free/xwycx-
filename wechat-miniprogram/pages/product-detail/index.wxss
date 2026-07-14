@@ -1,0 +1,5 @@
+.hero-image { width: 100%; height: 520rpx; display: flex; align-items: center; justify-content: center; background: #eef2f0; border-radius: 8rpx; }
+.fallback { color: #087f5b; font-size: 40rpx; font-weight: 700; }
+.detail-name { margin-top: 30rpx; font-size: 38rpx; font-weight: 800; }
+.detail-price { margin: 26rpx 0; }
+.fixed-action .primary { width: 100%; }

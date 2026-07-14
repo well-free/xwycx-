@@ -24,4 +24,12 @@ public class WechatPayCallbackVerifier {
                 notification.paymentId(), notification.notifyId(), notification.transactionId(),
                 notification.amount(), notification.status(), "wechatpay-v3-verified");
     }
+
+    public WechatPayRefundNotification verifyRefund(String body,
+                                                     String serial,
+                                                     String timestamp,
+                                                     String nonce,
+                                                     String signature) {
+        return client.verifyRefundNotification(body, serial, timestamp, nonce, signature);
+    }
 }

@@ -1,0 +1,5 @@
+<view class="page">
+  <view class="profile-head surface"><view class="avatar">{{avatar}}</view><view wx:if="{{current}}"><view class="phone">{{current.user.phone}}</view><view class="meta">{{current.user.role === 'ADMIN' ? '管理员' : '采购用户'}}</view></view><button wx:else class="primary" bindtap="login">登录 / 注册</button></view>
+  <view class="section menu"><view wx:for="{{menu}}" wx:key="url" class="row between" data-url="{{item.url}}" bindtap="open"><text>{{item.label}}</text><text class="muted">›</text></view></view>
+  <button wx:if="{{current}}" class="secondary logout" bindtap="logout">退出登录</button>
+</view>

@@ -29,6 +29,7 @@ import org.example.web.dto.PaymentResponse;
 import org.example.web.dto.RefundCreateRequest;
 import org.example.web.dto.RefundResponse;
 import org.example.web.dto.ShippingAddressSnapshot;
+import org.example.web.dto.ShipmentRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -200,24 +201,30 @@ public class CustomerOrderService {
         lifecycleService.timeoutClose(orderId);
     }
 
-    public CustomerOrderResponse ship(AuthUserResponse admin, long orderId) {
+    public CustomerOrderResponse ship(AuthUserResponse admin, long orderId, ShipmentRequest request) {
         if (admin.role() != UserRole.ADMIN) {
             throw BusinessException.forbidden("admin role required");
         }
-        CustomerOrderEntity order = orderMapper.selectById(orderId);
-        if (order == null) {
-            throw BusinessException.notFound("customer order not found");
-        }
-        if (!CustomerOrderStatus.PAID.name().equals(order.getStatus()) && !CustomerOrderStatus.FULFILLING.name().equals(order.getStatus())) {
-            throw BusinessException.conflict("order is not shippable");
-        }
-        Instant now = Instant.now();
-        order.setStatus(CustomerOrderStatus.SHIPPED.name());
-        order.setShippedAt(now);
-        order.setUpdatedAt(now);
-        updateOrder(order);
-        log.info("customer order shipped orderId={} adminId={}", orderId, admin.id());
-        return toResponse(order);
+        return lifecycleService.withOrderLock(orderId, () -> orderTransactionTemplate.execute(status -> {
+            CustomerOrderEntity order = orderMapper.selectById(orderId);
+            if (order == null) {
+                throw BusinessException.notFound("customer order not found");
+            }
+            if (!CustomerOrderStatus.PAID.name().equals(order.getStatus())
+                    && !CustomerOrderStatus.FULFILLING.name().equals(order.getStatus())) {
+                throw BusinessException.conflict("order is not shippable");
+            }
+            Instant now = Instant.now();
+            order.setStatus(CustomerOrderStatus.SHIPPED.name());
+            order.setShippingCarrier(request.carrier());
+            order.setTrackingNo(request.trackingNo());
+            order.setShippedAt(now);
+            order.setUpdatedAt(now);
+            updateOrder(order);
+            log.info("customer order shipped orderId={} adminId={} carrier={} trackingNo={}",
+                    orderId, admin.id(), request.carrier(), request.trackingNo());
+            return toResponse(order);
+        }));
     }
 
     private ProductEntity requireOnShelfProduct(long productId) {
@@ -272,7 +279,8 @@ public class CustomerOrderService {
         return new CustomerOrderResponse(order.getId(), order.getOrderNo(), order.getUserId(), order.getAddressId(),
                 deserializeShippingAddress(order),
                 order.getTotalAmount(), CustomerOrderStatus.valueOf(order.getStatus()), order.getRemark(), itemResponses,
-                order.getCreatedAt(), order.getUpdatedAt(), order.getPaidAt(), order.getShippedAt(), order.getCanceledAt());
+                order.getCreatedAt(), order.getUpdatedAt(), order.getPaidAt(), order.getShippedAt(), order.getCanceledAt(),
+                order.getShippingCarrier(), order.getTrackingNo());
     }
 
     private String serializeShippingAddress(ShippingAddressSnapshot shippingAddress) {

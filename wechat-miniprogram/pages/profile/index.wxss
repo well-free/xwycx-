@@ -1,0 +1,5 @@
+.profile-head { display: flex; align-items: center; gap: 24rpx; padding: 36rpx 28rpx; margin: -24rpx -28rpx 0; }
+.avatar { width: 104rpx; height: 104rpx; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #087f5b; color: #fff; font-size: 40rpx; font-weight: 800; }
+.phone { font-size: 34rpx; font-weight: 700; }
+.menu { padding: 0 28rpx; }
+.logout { width: 100%; margin-top: 40rpx; }

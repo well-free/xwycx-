@@ -1,0 +1,7 @@
+.home-head { display: flex; align-items: center; justify-content: space-between; padding: 18rpx 0 24rpx; }
+.brand { font-size: 40rpx; font-weight: 800; }
+.sub { margin-left: 18rpx; color: #6b7571; font-size: 24rpx; }
+.cart-link { color: #087f5b; font-weight: 700; }
+.search { min-height: 76rpx; padding: 0 26rpx; background: #f1f4f2; border-radius: 8rpx; }
+.compact-tabs { margin-top: 18rpx; }
+.retry { margin: 24rpx auto 0; }

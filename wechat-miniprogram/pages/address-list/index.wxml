@@ -1,0 +1,9 @@
+<view class="page surface">
+  <view wx:if="{{!items.length}}" class="empty">还没有配送地址</view>
+  <view wx:for="{{items}}" wx:key="id" class="address-row" data-index="{{index}}" bindtap="choose">
+    <view class="between"><view class="receiver">{{item.receiverName}} {{item.receiverPhone}}</view><text wx:if="{{item.defaultAddress}}" class="default">默认</text></view>
+    <view class="muted address-text">{{item.province}}{{item.city}}{{item.district}}{{item.detail}}</view>
+    <view class="actions"><text data-index="{{index}}" catchtap="edit">编辑</text><text class="danger" data-id="{{item.id}}" catchtap="remove">删除</text></view>
+  </view>
+  <view class="fixed-action"><button class="primary full" bindtap="add">新增地址</button></view>
+</view>

@@ -126,7 +126,9 @@ create table customer_orders (
   updated_at timestamp not null,
   paid_at timestamp,
   shipped_at timestamp,
-  canceled_at timestamp
+  canceled_at timestamp,
+  shipping_carrier varchar(64),
+  tracking_no varchar(128)
 );
 
 create unique index uk_customer_order_no on customer_orders(order_no);

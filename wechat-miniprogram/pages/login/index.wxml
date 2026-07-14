@@ -1,0 +1,17 @@
+<view class="login-page">
+  <view class="brand">小卫优采</view>
+  <view class="intro">一次性用品采购</view>
+  <view class="tabs login-tabs">
+    <view class="tab {{mode === 'wechat' ? 'active' : ''}}" data-mode="wechat" bindtap="setMode">微信登录</view>
+    <view class="tab {{mode === 'sms' ? 'active' : ''}}" data-mode="sms" bindtap="setMode">手机验证码</view>
+  </view>
+  <view wx:if="{{mode === 'sms'}}" class="form">
+    <input class="input" type="number" maxlength="11" placeholder="手机号" value="{{phone}}" bindinput="phoneInput" />
+    <view class="code-row">
+      <input class="input code-input" type="number" maxlength="6" placeholder="验证码" value="{{code}}" bindinput="codeInput" />
+      <button class="secondary" loading="{{sending}}" bindtap="sendCode">发送验证码</button>
+    </view>
+  </view>
+  <view wx:if="{{error}}" class="error">{{error}}</view>
+  <button class="primary login-button" loading="{{loading}}" bindtap="submit">{{mode === 'wechat' ? '微信快捷登录' : '登录 / 注册'}}</button>
+</view>

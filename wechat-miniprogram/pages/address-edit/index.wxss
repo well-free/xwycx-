@@ -1,0 +1,4 @@
+.form-page .input, .form-page .textarea { margin-bottom: 20rpx; }
+.region { display: flex; gap: 12rpx; }
+.region .input { min-width: 0; flex: 1; }
+.save { width: 100%; margin-top: 36rpx; }

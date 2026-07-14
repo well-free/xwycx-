@@ -288,6 +288,10 @@ public class PaymentService {
         return handleCallback(channel, request, true);
     }
 
+    public void handleVerifiedRefund(long refundId, String channelRefundNo, RefundStatus status) {
+        paymentCompensationService.handleGatewayNotification(refundId, channelRefundNo, status);
+    }
+
     private PaymentResponse handleCallback(PaymentChannel channel,
                                            PaymentCallbackRequest request,
                                            boolean signatureVerified) {
@@ -419,6 +423,29 @@ public class PaymentService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    public List<RefundResponse> listRefunds() {
+        return refundMapper.selectList(new LambdaQueryWrapper<RefundOrderEntity>()
+                        .orderByDesc(RefundOrderEntity::getCreatedAt))
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    public RefundResponse approveRefund(long refundId) {
+        RefundOrderEntity refund = refundMapper.selectById(refundId);
+        if (refund == null) {
+            throw BusinessException.notFound("refund not found");
+        }
+        if (RefundStatus.SUCCESS.name().equals(refund.getStatus())) {
+            return toResponse(refund);
+        }
+        PaymentOrderEntity payment = requirePayment(refund.getPaymentId());
+        if (customerOrderMapper.selectById(payment.getOrderId()) != null) {
+            paymentCompensationService.attemptForPayment(payment.getOrderId(), payment.getId());
+        }
+        return toResponse(refundMapper.selectById(refundId));
     }
 
     private RefundResponse refundLocked(long paymentId, RefundCreateRequest request) {
