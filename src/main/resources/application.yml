@@ -26,6 +26,7 @@ app:
     enabled: false
   mq:
     enabled: false
+    customer-order-timeout-topic: customer-order-timeout-topic
   order:
     timeout-seconds: 15
     cache-ttl-seconds: 120
@@ -37,6 +38,8 @@ app:
     callback-base-url: https://xwycx.xyz
     alipay-app-id: sandbox-local-app
     alipay-sandbox-gateway-url: https://openapi-sandbox.dl.alipaydev.com/gateway.do
+    compensation-enabled: true
+    compensation-retry-interval-ms: 60000
   sms:
     provider: local
     local-code: 123456

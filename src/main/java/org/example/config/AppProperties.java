@@ -50,6 +50,7 @@ public class AppProperties {
     public static class Mq {
         private boolean enabled;
         private String topic = "order-timeout-topic";
+        private String customerOrderTimeoutTopic = "customer-order-timeout-topic";
         private String catalogTopic = "catalog-change-topic";
 
         public boolean isEnabled() {
@@ -66,6 +67,14 @@ public class AppProperties {
 
         public void setTopic(String topic) {
             this.topic = topic;
+        }
+
+        public String getCustomerOrderTimeoutTopic() {
+            return customerOrderTimeoutTopic;
+        }
+
+        public void setCustomerOrderTimeoutTopic(String customerOrderTimeoutTopic) {
+            this.customerOrderTimeoutTopic = customerOrderTimeoutTopic;
         }
 
         public String getCatalogTopic() {
@@ -115,6 +124,13 @@ public class AppProperties {
         private String alipayAppId = "";
         private String alipaySandboxGatewayUrl = "https://openapi-sandbox.dl.alipaydev.com/gateway.do";
         private String wechatMchId = "";
+        private String wechatMerchantSerialNumber = "";
+        private String wechatPrivateKeyPath = "";
+        private String wechatApiV3Key = "";
+        private String wechatNotifyUrl = "https://xwycx.xyz/api/payments/callbacks/wechat";
+        private String wechatRefundNotifyUrl = "https://xwycx.xyz/api/payments/callbacks/wechat/refund";
+        private boolean compensationEnabled = true;
+        private long compensationRetryIntervalMs = 60_000L;
 
         public long getTimeoutSeconds() {
             return timeoutSeconds;
@@ -170,6 +186,62 @@ public class AppProperties {
 
         public void setWechatMchId(String wechatMchId) {
             this.wechatMchId = wechatMchId;
+        }
+
+        public String getWechatMerchantSerialNumber() {
+            return wechatMerchantSerialNumber;
+        }
+
+        public void setWechatMerchantSerialNumber(String wechatMerchantSerialNumber) {
+            this.wechatMerchantSerialNumber = wechatMerchantSerialNumber;
+        }
+
+        public String getWechatPrivateKeyPath() {
+            return wechatPrivateKeyPath;
+        }
+
+        public void setWechatPrivateKeyPath(String wechatPrivateKeyPath) {
+            this.wechatPrivateKeyPath = wechatPrivateKeyPath;
+        }
+
+        public String getWechatApiV3Key() {
+            return wechatApiV3Key;
+        }
+
+        public void setWechatApiV3Key(String wechatApiV3Key) {
+            this.wechatApiV3Key = wechatApiV3Key;
+        }
+
+        public String getWechatNotifyUrl() {
+            return wechatNotifyUrl;
+        }
+
+        public void setWechatNotifyUrl(String wechatNotifyUrl) {
+            this.wechatNotifyUrl = wechatNotifyUrl;
+        }
+
+        public String getWechatRefundNotifyUrl() {
+            return wechatRefundNotifyUrl;
+        }
+
+        public void setWechatRefundNotifyUrl(String wechatRefundNotifyUrl) {
+            this.wechatRefundNotifyUrl = wechatRefundNotifyUrl;
+        }
+
+        public boolean isCompensationEnabled() {
+            return compensationEnabled;
+        }
+
+        public void setCompensationEnabled(boolean compensationEnabled) {
+            this.compensationEnabled = compensationEnabled;
+        }
+
+        public long getCompensationRetryIntervalMs() {
+            return compensationRetryIntervalMs;
+        }
+
+        public void setCompensationRetryIntervalMs(long compensationRetryIntervalMs) {
+            this.compensationRetryIntervalMs = compensationRetryIntervalMs;
         }
     }
 

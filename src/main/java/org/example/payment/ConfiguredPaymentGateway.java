@@ -1,7 +1,11 @@
 package org.example.payment;
 
 import org.example.config.AppProperties;
+import org.example.refund.RefundStatus;
 import org.example.web.BusinessException;
+import org.example.wechat.WechatPayGateway;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -9,6 +13,7 @@ import java.math.RoundingMode;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
@@ -17,9 +22,28 @@ public class ConfiguredPaymentGateway implements PaymentGateway {
     private static final DateTimeFormatter ALIPAY_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final AppProperties properties;
+    private final WechatPayGateway wechatPayGateway;
 
     public ConfiguredPaymentGateway(AppProperties properties) {
+        this(properties, null);
+    }
+
+    @Autowired
+    public ConfiguredPaymentGateway(AppProperties properties,
+                                    ObjectProvider<WechatPayGateway> wechatPayGatewayProvider) {
         this.properties = properties;
+        this.wechatPayGateway = wechatPayGatewayProvider == null ? null : wechatPayGatewayProvider.getIfAvailable();
+    }
+
+    @Override
+    public PaymentGatewayResult createPayment(PaymentGatewayRequest request) {
+        if (isGateway()) {
+            if (request.channel() != PaymentChannel.WECHAT) {
+                throw BusinessException.serviceUnavailable("alipay production gateway is not configured");
+            }
+            return requireWechatGateway().createPayment(request);
+        }
+        return createPayment(request.channel(), request.paymentId(), request.amount());
     }
 
     @Override
@@ -27,14 +51,24 @@ public class ConfiguredPaymentGateway implements PaymentGateway {
         if (isSandbox()) {
             return createSandboxPayment(channel, paymentId, amount);
         }
-        if (!"mock".equalsIgnoreCase(properties.getPayment().getMode())) {
-            requireConfigured(channel);
+        if (isMock() && channel == PaymentChannel.WECHAT) {
+            String prepayId = "mock-" + paymentId;
+            MiniProgramPaymentParameters parameters = new MiniProgramPaymentParameters(
+                    String.valueOf(Instant.now().getEpochSecond()),
+                    "mock-nonce-" + paymentId,
+                    "prepay_id=" + prepayId,
+                    "RSA",
+                    "MOCK-PAY-SIGN-" + paymentId);
+            return new PaymentGatewayResult(null, null, prepayId, parameters);
+        }
+        if (isGateway()) {
+            return createPayment(new PaymentGatewayRequest(channel, paymentId, amount, null));
         }
         String channelName = channel.name().toLowerCase(Locale.ROOT);
         String base = properties.getPayment().getCallbackBaseUrl();
         String payUrl = base + "/pay/" + channelName + "?paymentId=" + paymentId;
         String qrCode = "PAY:" + channel.name() + ":" + paymentId + ":" + amount;
-        return new PaymentGatewayResult(payUrl, qrCode);
+        return new PaymentGatewayResult(payUrl, qrCode, null, null);
     }
 
     @Override
@@ -42,6 +76,9 @@ public class ConfiguredPaymentGateway implements PaymentGateway {
         if (isSandbox()) {
             requireConfigured(channel);
             return properties.getPayment().getCallbackSecret().equals(signature);
+        }
+        if (isGateway() && channel == PaymentChannel.WECHAT) {
+            return false;
         }
         if (!isMock()) {
             requireConfigured(channel);
@@ -55,6 +92,26 @@ public class ConfiguredPaymentGateway implements PaymentGateway {
             return "ALIPAY-SANDBOX-REFUND-" + refundId;
         }
         return (isMock() ? "MOCK" : "GW") + "-REFUND-" + refundId;
+    }
+
+    @Override
+    public PaymentRefundResult refund(PaymentChannel channel,
+                                      long refundId,
+                                      long paymentId,
+                                      BigDecimal refundAmount,
+                                      BigDecimal totalAmount,
+                                      String channelTradeNo) {
+        if (!isMock() && !isSandbox()) {
+            if (channel != PaymentChannel.WECHAT) {
+                throw BusinessException.serviceUnavailable("alipay production gateway is not configured");
+            }
+            return requireWechatGateway().refund(
+                    refundId, paymentId, refundAmount, totalAmount, channelTradeNo);
+        }
+        if (isSandbox()) {
+            requireConfigured(channel);
+        }
+        return new PaymentRefundResult(createRefundNo(refundId), RefundStatus.SUCCESS);
     }
 
     private PaymentGatewayResult createSandboxPayment(PaymentChannel channel, long paymentId, BigDecimal amount) {
@@ -75,7 +132,8 @@ public class ConfiguredPaymentGateway implements PaymentGateway {
                 + "&notify_url=" + encode(properties.getPayment().getCallbackBaseUrl() + "/api/payments/callbacks/alipay")
                 + "&return_url=" + encode(properties.getPayment().getCallbackBaseUrl() + "/orders.html")
                 + "&biz_content=" + encode(bizContent);
-        return new PaymentGatewayResult(payUrl, "ALIPAY_SANDBOX:" + paymentId + ":" + normalizedAmount);
+        return new PaymentGatewayResult(payUrl, "ALIPAY_SANDBOX:" + paymentId + ":" + normalizedAmount,
+                null, null);
     }
 
     private void requireConfigured(PaymentChannel channel) {
@@ -96,6 +154,17 @@ public class ConfiguredPaymentGateway implements PaymentGateway {
 
     private boolean isSandbox() {
         return "sandbox".equalsIgnoreCase(properties.getPayment().getMode());
+    }
+
+    private boolean isGateway() {
+        return "gateway".equalsIgnoreCase(properties.getPayment().getMode());
+    }
+
+    private WechatPayGateway requireWechatGateway() {
+        if (wechatPayGateway == null) {
+            throw BusinessException.serviceUnavailable("wechat pay gateway is not available");
+        }
+        return wechatPayGateway;
     }
 
     private String encode(String value) {

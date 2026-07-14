@@ -21,6 +21,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -163,6 +166,74 @@ class CartServiceTransactionTest {
                 .doesNotThrowAnyException();
 
         assertThat(cartService.list(USER)).hasSize(1);
+    }
+
+    @Test
+    void lockedPurchasedRemovalCommitsAndRollsBackWithCallerTransaction() {
+        cartService.put(USER, new CartItemRequest(1L, 2L));
+
+        cartService.withMutationLocks(USER.id(), List.of(1L), () -> {
+            transactionTemplate.executeWithoutResult(status -> {
+                    cartService.removePurchasedLocked(USER.id(), List.of(1L));
+                    status.setRollbackOnly();
+            });
+            return null;
+        });
+        assertThat(cartService.list(USER)).hasSize(1);
+
+        cartService.withMutationLocks(USER.id(), List.of(1L), () -> {
+            transactionTemplate.executeWithoutResult(status ->
+                    cartService.removePurchasedLocked(USER.id(), List.of(1L)));
+            return null;
+        });
+        assertThat(cartService.list(USER)).isEmpty();
+    }
+
+    @Test
+    void mutationLocksBlockConcurrentCartUpdateUntilRemovalCommits() throws Exception {
+        cartService.put(USER, new CartItemRequest(1L, 2L));
+        CountDownLatch removalStarted = new CountDownLatch(1);
+        CountDownLatch allowCommit = new CountDownLatch(1);
+        CountDownLatch updateStarted = new CountDownLatch(1);
+
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            var removal = executor.submit(() -> cartService.withMutationLocks(USER.id(), List.of(1L), () -> {
+                transactionTemplate.executeWithoutResult(status -> {
+                        cartService.removePurchasedLocked(USER.id(), List.of(1L));
+                        removalStarted.countDown();
+                        await(allowCommit);
+                });
+                return null;
+            }));
+            assertThat(removalStarted.await(5, TimeUnit.SECONDS)).isTrue();
+
+            var update = executor.submit(() -> {
+                updateStarted.countDown();
+                return cartService.put(USER, new CartItemRequest(1L, 3L));
+            });
+            assertThat(updateStarted.await(5, TimeUnit.SECONDS)).isTrue();
+            Thread.sleep(100L);
+            assertThat(update).isNotDone();
+
+            allowCommit.countDown();
+            removal.get(5, TimeUnit.SECONDS);
+            update.get(5, TimeUnit.SECONDS);
+        }
+
+        assertThat(cartService.list(USER)).singleElement()
+                .extracting(item -> item.quantity())
+                .isEqualTo(3L);
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("latch timed out");
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(exception);
+        }
     }
 
     private void deleteTestCart() {

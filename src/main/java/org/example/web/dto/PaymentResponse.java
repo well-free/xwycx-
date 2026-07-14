@@ -1,6 +1,7 @@
 package org.example.web.dto;
 
 import org.example.payment.PaymentChannel;
+import org.example.payment.MiniProgramPaymentParameters;
 import org.example.payment.PaymentStatus;
 
 import java.math.BigDecimal;
@@ -16,6 +17,8 @@ public record PaymentResponse(
         String channelTradeNo,
         String payUrl,
         String qrCode,
+        String prepayId,
+        MiniProgramPaymentParameters miniProgram,
         Instant createdAt,
         Instant updatedAt,
         Instant expireAt,

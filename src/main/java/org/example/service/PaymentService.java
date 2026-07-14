@@ -2,6 +2,8 @@ package org.example.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.auth.UserRole;
 import org.example.config.AppProperties;
 import org.example.commerce.CustomerOrderStatus;
@@ -16,8 +18,12 @@ import org.example.infrastructure.mybatis.mapper.OrderMapper;
 import org.example.infrastructure.mybatis.mapper.PaymentCallbackMapper;
 import org.example.infrastructure.mybatis.mapper.PaymentOrderMapper;
 import org.example.infrastructure.mybatis.mapper.RefundOrderMapper;
+import org.example.infrastructure.mybatis.mapper.WechatIdentityMapper;
 import org.example.payment.PaymentGateway;
 import org.example.payment.PaymentGatewayResult;
+import org.example.payment.PaymentGatewayRequest;
+import org.example.payment.MiniProgramPaymentParameters;
+import org.example.payment.PaymentRefundResult;
 import org.example.payment.PaymentChannel;
 import org.example.payment.PaymentStatus;
 import org.example.refund.RefundStatus;
@@ -32,44 +38,69 @@ import org.example.web.dto.RefundResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 
 @Service
 public class PaymentService {
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
     private static final Set<String> OPEN_PAYMENT_STATUSES = Set.of(PaymentStatus.PENDING.name(), PaymentStatus.PAYING.name());
+    private static final Set<String> CALLBACK_TERMINAL_STATUSES = Set.of(
+            PaymentStatus.CLOSED.name(), PaymentStatus.REFUNDING.name(), PaymentStatus.REFUNDED.name());
 
     private final PaymentOrderMapper paymentMapper;
     private final PaymentCallbackMapper callbackMapper;
     private final RefundOrderMapper refundMapper;
     private final OrderMapper orderMapper;
     private final CustomerOrderMapper customerOrderMapper;
+    private final WechatIdentityMapper wechatIdentityMapper;
     private final DistributedLockService lockService;
     private final AppProperties properties;
     private final PaymentGateway paymentGateway;
+    private final CustomerOrderLifecycleService customerOrderLifecycleService;
+    private final PaymentCompensationService paymentCompensationService;
+    private final ObjectMapper objectMapper;
+    private final TransactionTemplate callbackTransactionTemplate;
 
     public PaymentService(PaymentOrderMapper paymentMapper,
                           PaymentCallbackMapper callbackMapper,
                           RefundOrderMapper refundMapper,
                           OrderMapper orderMapper,
                           CustomerOrderMapper customerOrderMapper,
+                          WechatIdentityMapper wechatIdentityMapper,
                           DistributedLockService lockService,
                           AppProperties properties,
-                          PaymentGateway paymentGateway) {
+                          PaymentGateway paymentGateway,
+                          CustomerOrderLifecycleService customerOrderLifecycleService,
+                          PaymentCompensationService paymentCompensationService,
+                          ObjectMapper objectMapper,
+                          TransactionTemplate transactionTemplate) {
         this.paymentMapper = paymentMapper;
         this.callbackMapper = callbackMapper;
         this.refundMapper = refundMapper;
         this.orderMapper = orderMapper;
         this.customerOrderMapper = customerOrderMapper;
+        this.wechatIdentityMapper = wechatIdentityMapper;
         this.lockService = lockService;
         this.properties = properties;
         this.paymentGateway = paymentGateway;
+        this.customerOrderLifecycleService = customerOrderLifecycleService;
+        this.paymentCompensationService = paymentCompensationService;
+        this.objectMapper = objectMapper;
+        this.callbackTransactionTemplate = new TransactionTemplate(
+                Objects.requireNonNull(transactionTemplate.getTransactionManager()));
+        this.callbackTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     public PaymentResponse create(PaymentCreateRequest request) {
@@ -95,8 +126,7 @@ public class PaymentService {
                 existing.setUpdatedAt(now);
                 existing.setExpireAt(now.plusSeconds(properties.getPayment().getTimeoutSeconds()));
                 PaymentGatewayResult gateway = paymentGateway.createPayment(request.channel(), existing.getId(), existing.getAmount());
-                existing.setPayUrl(gateway.payUrl());
-                existing.setQrCode(gateway.qrCode());
+                applyGatewayResult(existing, gateway);
                 updatePayment(existing);
                 return toResponse(existing);
             }
@@ -114,57 +144,65 @@ public class PaymentService {
             payment.setUpdatedAt(now);
             payment.setExpireAt(now.plusSeconds(properties.getPayment().getTimeoutSeconds()));
             PaymentGatewayResult gateway = paymentGateway.createPayment(request.channel(), payment.getId(), payment.getAmount());
-            payment.setPayUrl(gateway.payUrl());
-            payment.setQrCode(gateway.qrCode());
+            applyGatewayResult(payment, gateway);
             paymentMapper.insert(payment);
             log.info("payment created paymentId={} orderId={} channel={} amount={}", payment.getId(), payment.getOrderId(), payment.getChannel(), payment.getAmount());
             return toResponse(payment);
         });
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
     public PaymentResponse createForCustomerOrder(PaymentCreateRequest request, BigDecimal amount) {
-        return lockService.withLock("payment:customer-order:" + request.orderId() + ":" + request.channel(), () -> {
-            CustomerOrderEntity order = customerOrderMapper.selectById(request.orderId());
-            if (order == null) {
-                throw BusinessException.notFound("customer order not found");
+        CustomerOrderEntity order = customerOrderMapper.selectById(request.orderId());
+        if (order == null) {
+            throw BusinessException.notFound("customer order not found");
+        }
+        if (!CustomerOrderStatus.PENDING_PAYMENT.name().equals(order.getStatus())) {
+            throw BusinessException.conflict("customer order is not payable");
+        }
+        PaymentOrderEntity activePayment = paymentMapper.selectOne(new LambdaQueryWrapper<PaymentOrderEntity>()
+                .eq(PaymentOrderEntity::getOrderId, request.orderId())
+                .in(PaymentOrderEntity::getStatus, OPEN_PAYMENT_STATUSES)
+                .orderByDesc(PaymentOrderEntity::getCreatedAt)
+                .last("limit 1"));
+        if (activePayment != null) {
+            return toResponse(activePayment);
+        }
+        PaymentOrderEntity existing = paymentMapper.selectOne(new LambdaQueryWrapper<PaymentOrderEntity>()
+                .eq(PaymentOrderEntity::getOrderId, request.orderId())
+                .eq(PaymentOrderEntity::getChannel, request.channel().name())
+                .orderByDesc(PaymentOrderEntity::getCreatedAt)
+                .last("limit 1"));
+        Instant now = Instant.now();
+        PaymentOrderEntity payment = existing == null ? new PaymentOrderEntity() : existing;
+        if (payment.getId() == null) {
+            payment.setId(IdWorker.getId());
+            payment.setCreatedAt(now);
+            payment.setVersion(0L);
+        }
+        payment.setOrderId(order.getId());
+        payment.setGatewayMode(paymentMode());
+        payment.setChannel(request.channel().name());
+        payment.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
+        payment.setStatus(PaymentStatus.PAYING.name());
+        payment.setChannelTradeNo(null);
+        payment.setPaidAt(null);
+        payment.setClosedAt(null);
+        payment.setUpdatedAt(now);
+        payment.setExpireAt(now.plusSeconds(properties.getPayment().getTimeoutSeconds()));
+        PaymentGatewayResult gateway = paymentGateway.createPayment(new PaymentGatewayRequest(
+                request.channel(), payment.getId(), payment.getAmount(),
+                payerOpenId(order.getUserId(), request.channel())));
+        applyGatewayResult(payment, gateway);
+        if (existing == null) {
+            if (paymentMapper.insert(payment) != 1) {
+                throw BusinessException.conflict("payment insert conflicted");
             }
-            if (!CustomerOrderStatus.PENDING_PAYMENT.name().equals(order.getStatus())) {
-                throw BusinessException.conflict("customer order is not payable");
-            }
-            PaymentOrderEntity existing = paymentMapper.selectOne(new LambdaQueryWrapper<PaymentOrderEntity>()
-                    .eq(PaymentOrderEntity::getOrderId, request.orderId())
-                    .eq(PaymentOrderEntity::getChannel, request.channel().name()));
-            if (existing != null && (OPEN_PAYMENT_STATUSES.contains(existing.getStatus()) || PaymentStatus.SUCCESS.name().equals(existing.getStatus()))) {
-                return toResponse(existing);
-            }
-            Instant now = Instant.now();
-            PaymentOrderEntity payment = existing == null ? new PaymentOrderEntity() : existing;
-            if (payment.getId() == null) {
-                payment.setId(IdWorker.getId());
-                payment.setCreatedAt(now);
-                payment.setVersion(0L);
-            }
-            payment.setOrderId(order.getId());
-            payment.setGatewayMode(paymentMode());
-            payment.setChannel(request.channel().name());
-            payment.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
-            payment.setStatus(PaymentStatus.PAYING.name());
-            payment.setChannelTradeNo(null);
-            payment.setPaidAt(null);
-            payment.setClosedAt(null);
-            payment.setUpdatedAt(now);
-            payment.setExpireAt(now.plusSeconds(properties.getPayment().getTimeoutSeconds()));
-            PaymentGatewayResult gateway = paymentGateway.createPayment(request.channel(), payment.getId(), payment.getAmount());
-            payment.setPayUrl(gateway.payUrl());
-            payment.setQrCode(gateway.qrCode());
-            if (existing == null) {
-                paymentMapper.insert(payment);
-            } else {
-                updatePayment(payment);
-            }
-            log.info("customer payment created paymentId={} customerOrderId={} channel={} amount={}", payment.getId(), payment.getOrderId(), payment.getChannel(), payment.getAmount());
-            return toResponse(payment);
-        });
+        } else {
+            updatePayment(payment);
+        }
+        log.info("customer payment created paymentId={} customerOrderId={} channel={} amount={}", payment.getId(), payment.getOrderId(), payment.getChannel(), payment.getAmount());
+        return toResponse(payment);
     }
 
     public PaymentResponse get(long paymentId) {
@@ -243,69 +281,130 @@ public class PaymentService {
     }
 
     public PaymentResponse handleCallback(PaymentChannel channel, PaymentCallbackRequest request) {
-        return lockService.withLock("payment:id:" + request.paymentId(), () -> {
+        return handleCallback(channel, request, false);
+    }
+
+    public PaymentResponse handleVerifiedCallback(PaymentChannel channel, PaymentCallbackRequest request) {
+        return handleCallback(channel, request, true);
+    }
+
+    private PaymentResponse handleCallback(PaymentChannel channel,
+                                           PaymentCallbackRequest request,
+                                           boolean signatureVerified) {
+        PaymentResponse response = lockService.withLock("payment:id:" + request.paymentId(), () -> {
             PaymentOrderEntity payment = requirePayment(request.paymentId());
-            PaymentCallbackEntity existingCallback = callbackMapper.selectOne(new LambdaQueryWrapper<PaymentCallbackEntity>()
-                    .eq(PaymentCallbackEntity::getChannel, channel.name())
-                    .eq(PaymentCallbackEntity::getNotifyId, request.notifyId()));
-            if (existingCallback != null) {
+            Supplier<PaymentResponse> transaction = () -> callbackTransactionTemplate.execute(status ->
+                    processCallback(channel, request, signatureVerified));
+            CustomerOrderEntity customerOrder = customerOrderMapper.selectById(payment.getOrderId());
+            return customerOrder == null
+                    ? transaction.get()
+                    : customerOrderLifecycleService.withOrderLock(customerOrder.getId(), transaction);
+        });
+        paymentCompensationService.attemptForPayment(response.orderId(), response.id());
+        return response;
+    }
+
+    private PaymentResponse processCallback(PaymentChannel channel,
+                                            PaymentCallbackRequest request,
+                                            boolean signatureVerified) {
+        PaymentOrderEntity payment = requirePayment(request.paymentId());
+        PaymentCallbackEntity existingCallback = callbackMapper.selectOne(new LambdaQueryWrapper<PaymentCallbackEntity>()
+                .eq(PaymentCallbackEntity::getChannel, channel.name())
+                .eq(PaymentCallbackEntity::getNotifyId, request.notifyId()));
+        if (existingCallback != null) {
+            return toResponse(payment);
+        }
+
+        verifyCallback(channel, payment, request, signatureVerified);
+        insertCallback(channel, request);
+        log.info("payment callback accepted paymentId={} channel={} notifyId={} status={}",
+                payment.getId(), channel, request.notifyId(), request.status());
+
+        String event = normalizeEvent(request.status());
+        if ("SUCCESS".equals(event)) {
+            if (CALLBACK_TERMINAL_STATUSES.contains(payment.getStatus())) {
+                log.info("payment success callback ignored for terminal payment paymentId={} status={}",
+                        payment.getId(), payment.getStatus());
                 return toResponse(payment);
             }
-
-            verifyCallback(channel, payment, request);
-            insertCallback(channel, request);
-            log.info("payment callback accepted paymentId={} channel={} notifyId={} status={}", payment.getId(), channel, request.notifyId(), request.status());
-
-            String event = normalizeEvent(request.status());
-            if ("SUCCESS".equals(event) && !PaymentStatus.SUCCESS.name().equals(payment.getStatus())) {
+            Instant paidAt = payment.getPaidAt() == null ? Instant.now() : payment.getPaidAt();
+            if (hasOtherSuccessfulCustomerPayment(payment)) {
+                payment.setStatus(PaymentStatus.REFUNDING.name());
+                payment.setChannelTradeNo(request.channelTradeNo());
+                payment.setPaidAt(paidAt);
+                payment.setUpdatedAt(paidAt);
+                updatePayment(payment);
+                log.warn("duplicate customer payment scheduled for refund paymentId={} orderId={}",
+                        payment.getId(), payment.getOrderId());
+                return toResponse(payment);
+            }
+            if (!PaymentStatus.SUCCESS.name().equals(payment.getStatus())) {
                 payment.setStatus(PaymentStatus.SUCCESS.name());
                 payment.setChannelTradeNo(request.channelTradeNo());
-                payment.setPaidAt(Instant.now());
-                payment.setUpdatedAt(payment.getPaidAt());
-                updatePayment(payment);
-                markCustomerOrderPaid(payment.getOrderId(), payment.getPaidAt());
-            } else if ("FAILED".equals(event) && OPEN_PAYMENT_STATUSES.contains(payment.getStatus())) {
-                payment.setStatus(PaymentStatus.FAILED.name());
-                payment.setChannelTradeNo(request.channelTradeNo());
-                payment.setUpdatedAt(Instant.now());
+                payment.setPaidAt(paidAt);
+                payment.setUpdatedAt(paidAt);
                 updatePayment(payment);
             }
-            return toResponse(payment);
-        });
+            customerOrderLifecycleService.applySuccessfulPaymentLocked(payment.getOrderId(), paidAt);
+        } else if ("FAILED".equals(event) && OPEN_PAYMENT_STATUSES.contains(payment.getStatus())) {
+            payment.setStatus(PaymentStatus.FAILED.name());
+            payment.setChannelTradeNo(request.channelTradeNo());
+            payment.setUpdatedAt(Instant.now());
+            updatePayment(payment);
+        }
+        return toResponse(payment);
+    }
+
+    private boolean hasOtherSuccessfulCustomerPayment(PaymentOrderEntity payment) {
+        if (customerOrderMapper.selectById(payment.getOrderId()) == null) {
+            return false;
+        }
+        return paymentMapper.selectCount(new LambdaQueryWrapper<PaymentOrderEntity>()
+                .eq(PaymentOrderEntity::getOrderId, payment.getOrderId())
+                .ne(PaymentOrderEntity::getId, payment.getId())
+                .eq(PaymentOrderEntity::getStatus, PaymentStatus.SUCCESS.name())) > 0;
     }
 
     public RefundResponse refund(long paymentId, RefundCreateRequest request) {
-        return lockService.withLock("payment:id:" + paymentId, () -> {
-            PaymentOrderEntity payment = requirePayment(paymentId);
-            if (!PaymentStatus.SUCCESS.name().equals(payment.getStatus())) {
-                throw BusinessException.conflict("payment is not successful");
-            }
-            if (request.amount() == null || request.amount().compareTo(BigDecimal.ZERO) <= 0) {
-                throw BusinessException.badRequest("refund amount must be positive");
-            }
-            if (request.amount().compareTo(payment.getAmount()) > 0) {
-                throw BusinessException.badRequest("refund amount exceeds payment amount");
-            }
+        return lockService.withLock("payment:id:" + paymentId, () ->
+                callbackTransactionTemplate.execute(status -> refundLocked(paymentId, request)));
+    }
 
-            Instant now = Instant.now();
-            RefundOrderEntity refund = new RefundOrderEntity();
-            refund.setId(IdWorker.getId());
-            refund.setPaymentId(paymentId);
-            refund.setAmount(request.amount().setScale(2, RoundingMode.HALF_UP));
-            refund.setReason((request.reason() == null || request.reason().isBlank()) ? "refund requested" : request.reason());
-            refund.setStatus(RefundStatus.SUCCESS.name());
-            refund.setChannelRefundNo(paymentGateway.createRefundNo(refund.getId()));
-            refund.setCreatedAt(now);
-            refund.setUpdatedAt(now);
-            refund.setCompletedAt(now);
-            refundMapper.insert(refund);
-
-            payment.setStatus(PaymentStatus.REFUNDED.name());
-            payment.setUpdatedAt(now);
-            updatePayment(payment);
-            log.info("payment refunded paymentId={} refundId={} amount={}", paymentId, refund.getId(), refund.getAmount());
-            return toResponse(refund);
-        });
+    public RefundResponse refundCustomerOrder(AuthUserResponse user,
+                                              long orderId,
+                                              RefundCreateRequest request) {
+        CustomerOrderEntity visibleOrder = requireVisibleCustomerOrder(user, orderId);
+        PaymentOrderEntity visiblePayment = findSuccessfulPayment(orderId);
+        if (visiblePayment == null) {
+            throw BusinessException.conflict("order is not paid");
+        }
+        return lockService.withLock("payment:id:" + visiblePayment.getId(), () ->
+                customerOrderLifecycleService.withOrderLock(orderId, () ->
+                        callbackTransactionTemplate.execute(status -> {
+                            CustomerOrderEntity order = requireVisibleCustomerOrder(user, visibleOrder.getId());
+                            PaymentOrderEntity payment = requirePayment(visiblePayment.getId());
+                            if (!payment.getOrderId().equals(orderId)) {
+                                throw BusinessException.conflict("payment order mismatch");
+                            }
+                            RefundResponse refund = refundLocked(payment.getId(), request);
+                            PaymentOrderEntity refundedPayment = requirePayment(payment.getId());
+                            String nextOrderStatus = order.getStatus();
+                            if (PaymentStatus.REFUNDED.name().equals(refundedPayment.getStatus())) {
+                                nextOrderStatus = CustomerOrderStatus.REFUNDED.name();
+                            } else if (PaymentStatus.REFUNDING.name().equals(refundedPayment.getStatus())
+                                    && pendingRefundTotal(payment.getId()).compareTo(payment.getAmount()) >= 0) {
+                                nextOrderStatus = CustomerOrderStatus.REFUNDING.name();
+                            }
+                            if (nextOrderStatus.equals(order.getStatus())) {
+                                return refund;
+                            }
+                            order.setStatus(nextOrderStatus);
+                            order.setUpdatedAt(Instant.now());
+                            if (customerOrderMapper.updateById(order) != 1) {
+                                throw BusinessException.conflict("customer order update conflicted");
+                            }
+                            return refund;
+                        })));
     }
 
     public RefundResponse refund(AuthUserResponse user, long paymentId, RefundCreateRequest request) {
@@ -320,6 +419,87 @@ public class PaymentService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    private RefundResponse refundLocked(long paymentId, RefundCreateRequest request) {
+        PaymentOrderEntity payment = requirePayment(paymentId);
+        if (!PaymentStatus.SUCCESS.name().equals(payment.getStatus())) {
+            throw BusinessException.conflict("payment is not successful");
+        }
+        if (request.amount() == null || request.amount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw BusinessException.badRequest("refund amount must be positive");
+        }
+        BigDecimal completedRefunds = completedRefundTotal(paymentId);
+        BigDecimal availableRefund = payment.getAmount().subtract(completedRefunds);
+        if (request.amount().compareTo(availableRefund) > 0) {
+            throw BusinessException.badRequest("refund amount exceeds payment amount");
+        }
+
+        Instant now = Instant.now();
+        RefundOrderEntity refund = new RefundOrderEntity();
+        refund.setId(IdWorker.getId());
+        refund.setPaymentId(paymentId);
+        refund.setAmount(request.amount().setScale(2, RoundingMode.HALF_UP));
+        refund.setReason((request.reason() == null || request.reason().isBlank()) ? "refund requested" : request.reason());
+        PaymentRefundResult gatewayRefund = paymentGateway.refund(
+                PaymentChannel.valueOf(payment.getChannel()), refund.getId(), paymentId,
+                refund.getAmount(), payment.getAmount(), payment.getChannelTradeNo());
+        refund.setStatus(gatewayRefund.status().name());
+        refund.setChannelRefundNo(gatewayRefund.channelRefundNo());
+        refund.setCreatedAt(now);
+        refund.setUpdatedAt(now);
+        if (gatewayRefund.status() == RefundStatus.SUCCESS) {
+            refund.setCompletedAt(now);
+        }
+        if (refundMapper.insert(refund) != 1) {
+            throw BusinessException.conflict("refund insert conflicted");
+        }
+
+        boolean fullyRefunded = completedRefunds.add(refund.getAmount()).compareTo(payment.getAmount()) >= 0;
+        payment.setStatus(gatewayRefund.status() == RefundStatus.SUCCESS
+                ? (fullyRefunded ? PaymentStatus.REFUNDED.name() : PaymentStatus.SUCCESS.name())
+                : PaymentStatus.REFUNDING.name());
+        payment.setUpdatedAt(now);
+        updatePayment(payment);
+        log.info("payment refunded paymentId={} refundId={} amount={}", paymentId, refund.getId(), refund.getAmount());
+        return toResponse(refund);
+    }
+
+    private BigDecimal completedRefundTotal(long paymentId) {
+        return refundTotal(paymentId, Set.of(RefundStatus.SUCCESS.name()));
+    }
+
+    private BigDecimal pendingRefundTotal(long paymentId) {
+        return refundTotal(paymentId, Set.of(
+                RefundStatus.SUCCESS.name(), RefundStatus.PROCESSING.name(), RefundStatus.FAILED.name()));
+    }
+
+    private BigDecimal refundTotal(long paymentId, Set<String> statuses) {
+        return refundMapper.selectList(new LambdaQueryWrapper<RefundOrderEntity>()
+                        .eq(RefundOrderEntity::getPaymentId, paymentId)
+                        .in(RefundOrderEntity::getStatus, statuses))
+                .stream()
+                .map(RefundOrderEntity::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private CustomerOrderEntity requireVisibleCustomerOrder(AuthUserResponse user, long orderId) {
+        CustomerOrderEntity order = customerOrderMapper.selectById(orderId);
+        if (order == null) {
+            throw BusinessException.notFound("customer order not found");
+        }
+        if (user.role() != UserRole.ADMIN && !order.getUserId().equals(user.id())) {
+            throw BusinessException.forbidden("order belongs to another user");
+        }
+        return order;
+    }
+
+    private PaymentOrderEntity findSuccessfulPayment(long orderId) {
+        return paymentMapper.selectOne(new LambdaQueryWrapper<PaymentOrderEntity>()
+                .eq(PaymentOrderEntity::getOrderId, orderId)
+                .eq(PaymentOrderEntity::getStatus, PaymentStatus.SUCCESS.name())
+                .orderByDesc(PaymentOrderEntity::getPaidAt)
+                .last("limit 1"));
     }
 
     private OrderEntity requirePayableOrder(long orderId) {
@@ -355,11 +535,14 @@ public class PaymentService {
         }
     }
 
-    private void verifyCallback(PaymentChannel channel, PaymentOrderEntity payment, PaymentCallbackRequest request) {
+    private void verifyCallback(PaymentChannel channel,
+                                PaymentOrderEntity payment,
+                                PaymentCallbackRequest request,
+                                boolean signatureVerified) {
         if (!channel.name().equals(payment.getChannel())) {
             throw BusinessException.badRequest("channel mismatch");
         }
-        if (!paymentGateway.verifyCallback(channel, request.signature())) {
+        if (!signatureVerified && !paymentGateway.verifyCallback(channel, request.signature())) {
             throw BusinessException.badRequest("invalid payment signature");
         }
         if (payment.getAmount().compareTo(request.amount()) != 0) {
@@ -369,6 +552,20 @@ public class PaymentService {
         if (!"SUCCESS".equals(event) && !"FAILED".equals(event)) {
             throw BusinessException.badRequest("unsupported payment callback status");
         }
+    }
+
+    private String payerOpenId(long userId, PaymentChannel channel) {
+        if (channel != PaymentChannel.WECHAT) {
+            return null;
+        }
+        var identity = wechatIdentityMapper.selectOne(
+                new LambdaQueryWrapper<org.example.infrastructure.mybatis.entity.WechatIdentityEntity>()
+                        .eq(org.example.infrastructure.mybatis.entity.WechatIdentityEntity::getUserId, userId)
+                        .eq(org.example.infrastructure.mybatis.entity.WechatIdentityEntity::getAppid,
+                                properties.getWechat().getAppId())
+                        .orderByDesc(org.example.infrastructure.mybatis.entity.WechatIdentityEntity::getUpdatedAt)
+                        .last("limit 1"));
+        return identity == null ? null : identity.getOpenid();
     }
 
     private void insertCallback(PaymentChannel channel, PaymentCallbackRequest request) {
@@ -383,13 +580,45 @@ public class PaymentService {
         callback.setPayload("paymentId=" + request.paymentId() + ",notifyId=" + request.notifyId() + ",status=" + request.status());
         callback.setProcessed(true);
         callback.setCreatedAt(Instant.now());
-        callbackMapper.insert(callback);
+        if (callbackMapper.insert(callback) != 1) {
+            throw BusinessException.conflict("payment callback insert conflicted");
+        }
     }
 
     private void updatePayment(PaymentOrderEntity payment) {
         int updated = paymentMapper.updateById(payment);
-        if (updated == 0) {
+        if (updated != 1) {
             throw BusinessException.conflict("payment update conflicted");
+        }
+    }
+
+    private void applyGatewayResult(PaymentOrderEntity payment, PaymentGatewayResult gateway) {
+        payment.setPayUrl(gateway.payUrl());
+        payment.setQrCode(gateway.qrCode());
+        payment.setPrepayId(gateway.prepayId());
+        payment.setPaymentParameters(writeMiniProgramParameters(gateway.miniProgram()));
+    }
+
+    private String writeMiniProgramParameters(MiniProgramPaymentParameters parameters) {
+        if (parameters == null) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(parameters);
+        } catch (JsonProcessingException exception) {
+            throw BusinessException.serviceUnavailable("payment parameters serialization failed");
+        }
+    }
+
+    private MiniProgramPaymentParameters readMiniProgramParameters(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(value, MiniProgramPaymentParameters.class);
+        } catch (JsonProcessingException exception) {
+            log.warn("invalid stored mini program payment parameters");
+            return null;
         }
     }
 
@@ -397,20 +626,11 @@ public class PaymentService {
         return status.trim().toUpperCase(Locale.ROOT);
     }
 
-    private void markCustomerOrderPaid(long orderId, Instant paidAt) {
-        CustomerOrderEntity order = customerOrderMapper.selectById(orderId);
-        if (order != null && CustomerOrderStatus.PENDING_PAYMENT.name().equals(order.getStatus())) {
-            order.setStatus(CustomerOrderStatus.PAID.name());
-            order.setPaidAt(paidAt);
-            order.setUpdatedAt(paidAt);
-            customerOrderMapper.updateById(order);
-        }
-    }
-
     private PaymentResponse toResponse(PaymentOrderEntity payment) {
         return new PaymentResponse(payment.getId(), payment.getOrderId(), gatewayModeOf(payment),
                 PaymentChannel.valueOf(payment.getChannel()), payment.getAmount(), PaymentStatus.valueOf(payment.getStatus()), payment.getChannelTradeNo(),
-                payment.getPayUrl(), payment.getQrCode(), payment.getCreatedAt(), payment.getUpdatedAt(),
+                payment.getPayUrl(), payment.getQrCode(), payment.getPrepayId(),
+                readMiniProgramParameters(payment.getPaymentParameters()), payment.getCreatedAt(), payment.getUpdatedAt(),
                 payment.getExpireAt(), payment.getPaidAt(), payment.getClosedAt());
     }
 

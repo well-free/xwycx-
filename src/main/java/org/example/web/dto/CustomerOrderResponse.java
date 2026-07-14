@@ -11,6 +11,7 @@ public record CustomerOrderResponse(
         String orderNo,
         long userId,
         long addressId,
+        ShippingAddressSnapshot shippingAddress,
         BigDecimal totalAmount,
         CustomerOrderStatus status,
         String remark,

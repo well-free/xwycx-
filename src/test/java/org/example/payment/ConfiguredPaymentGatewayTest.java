@@ -1,6 +1,7 @@
 package org.example.payment;
 
 import org.example.config.AppProperties;
+import org.example.refund.RefundStatus;
 import org.example.web.BusinessException;
 import org.junit.jupiter.api.Test;
 
@@ -10,6 +11,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ConfiguredPaymentGatewayTest {
+    @Test
+    void shouldCreateWechatMiniProgramParametersInMockMode() {
+        AppProperties properties = new AppProperties();
+        ConfiguredPaymentGateway gateway = new ConfiguredPaymentGateway(properties);
+
+        PaymentGatewayResult result = gateway.createPayment(
+                PaymentChannel.WECHAT, 88L, new BigDecimal("12.80"));
+
+        assertThat(result.prepayId()).isEqualTo("mock-88");
+        assertThat(result.miniProgram()).isNotNull();
+        assertThat(result.miniProgram().packageValue()).isEqualTo("prepay_id=mock-88");
+        assertThat(result.miniProgram().signType()).isEqualTo("RSA");
+        assertThat(result.miniProgram().paySign()).isEqualTo("MOCK-PAY-SIGN-88");
+    }
+
     @Test
     void shouldCreateAlipaySandboxPaymentPayload() {
         AppProperties properties = new AppProperties();
@@ -31,6 +47,11 @@ class ConfiguredPaymentGatewayTest {
         assertThat(gateway.verifyCallback(PaymentChannel.ALIPAY, "sandbox-secret")).isTrue();
         assertThat(gateway.verifyCallback(PaymentChannel.ALIPAY, "bad")).isFalse();
         assertThat(gateway.createRefundNo(2002L)).isEqualTo("ALIPAY-SANDBOX-REFUND-2002");
+        PaymentRefundResult refund = gateway.refund(
+                PaymentChannel.ALIPAY, 2002L, 1001L,
+                new BigDecimal("19.80"), new BigDecimal("19.80"), "trade-1001");
+        assertThat(refund.channelRefundNo()).isEqualTo("ALIPAY-SANDBOX-REFUND-2002");
+        assertThat(refund.status()).isEqualTo(RefundStatus.SUCCESS);
     }
 
     @Test
@@ -43,5 +64,18 @@ class ConfiguredPaymentGatewayTest {
         assertThatThrownBy(() -> gateway.createPayment(PaymentChannel.ALIPAY, 1001L, new BigDecimal("19.80")))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("alipay app id is not configured");
+    }
+
+    @Test
+    void gatewayRefundPlaceholderIsRetryable() {
+        AppProperties properties = new AppProperties();
+        properties.getPayment().setMode("gateway");
+        ConfiguredPaymentGateway gateway = new ConfiguredPaymentGateway(properties);
+
+        assertThatThrownBy(() -> gateway.refund(
+                PaymentChannel.ALIPAY, 2002L, 1001L,
+                new BigDecimal("19.80"), new BigDecimal("19.80"), "trade-1001"))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getStatus().value()).isEqualTo(503));
     }
 }

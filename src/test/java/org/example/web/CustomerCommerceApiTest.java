@@ -3,6 +3,7 @@ package org.example.web;
 import com.jayway.jsonpath.JsonPath;
 import org.example.infrastructure.mq.OrderEventPublisher;
 import org.example.infrastructure.mq.OrderTimeoutScheduler;
+import org.example.infrastructure.mq.CustomerOrderTimeoutDispatcher;
 import org.example.infrastructure.rate.RateLimitService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,7 +13,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -25,10 +25,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {
         "app.redis.enabled=false",
-        "app.mq.enabled=false"
+        "app.mq.enabled=false",
+        "spring.datasource.url=jdbc:h2:mem:customer_commerce_api;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false"
 })
 @AutoConfigureMockMvc
-@Transactional
 class CustomerCommerceApiTest {
     @Autowired
     private MockMvc mockMvc;
@@ -41,6 +41,9 @@ class CustomerCommerceApiTest {
 
     @MockBean
     private RateLimitService rateLimitService;
+
+    @MockBean
+    private CustomerOrderTimeoutDispatcher customerOrderTimeoutDispatcher;
 
     @BeforeEach
     void setUp() {
@@ -130,6 +133,13 @@ class CustomerCommerceApiTest {
     @Test
     void shouldLoginCreateCustomerOrderPayAndRefund() throws Exception {
         String token = login("13800000001");
+        long addressId = createAddress(token, "Alice");
+
+        mockMvc.perform(post("/api/cart/items")
+                        .header("X-Session-Token", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"productId\":1,\"quantity\":3}"))
+                .andExpect(status().isOk());
 
         String productsJson = mockMvc.perform(get("/api/products"))
                 .andExpect(status().isOk())
@@ -144,10 +154,10 @@ class CustomerCommerceApiTest {
                         .content("""
                                 {
                                   "items": [{"productId": 1, "quantity": 3}],
-                                  "addressId": 1,
+                                  "addressId": %d,
                                   "remark": "工作日配送"
                                 }
-                                """))
+                                """.formatted(addressId)))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -155,6 +165,17 @@ class CustomerCommerceApiTest {
         long orderId = ((Number) JsonPath.read(orderJson, "$.id")).longValue();
         assertThat(JsonPath.read(orderJson, "$.status").toString()).isEqualTo("PENDING_PAYMENT");
         assertThat(((Number) JsonPath.read(orderJson, "$.totalAmount")).doubleValue()).isEqualTo(38.40d);
+        assertThat(JsonPath.read(orderJson, "$.shippingAddress.receiverName").toString()).isEqualTo("Alice");
+        assertThat(JsonPath.read(orderJson, "$.shippingAddress.province").toString()).isEqualTo("Zhejiang");
+        assertThat(JsonPath.read(orderJson, "$.shippingAddress.detail").toString()).isEqualTo("No. 1 Road");
+
+        String cartJson = mockMvc.perform(get("/api/cart")
+                        .header("X-Session-Token", token))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(((Number) JsonPath.read(cartJson, "$.count")).longValue()).isZero();
 
         String paymentJson = mockMvc.perform(post("/api/customer-orders/{id}/payments", orderId)
                         .header("X-Session-Token", token)
@@ -213,15 +234,16 @@ class CustomerCommerceApiTest {
                 .andExpect(status().isUnauthorized());
 
         String token = login("13800000002");
+        long addressId = createAddress(token, "Stock Test");
         mockMvc.perform(post("/api/customer-orders")
                         .header("X-Session-Token", token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "items": [{"productId": 1, "quantity": 999999}],
-                                  "addressId": 1
+                                  "addressId": %d
                                 }
-                                """))
+                                """.formatted(addressId)))
                 .andExpect(status().isConflict());
     }
 
@@ -284,5 +306,27 @@ class CustomerCommerceApiTest {
                 .getResponse()
                 .getContentAsString();
         return JsonPath.read(loginJson, "$.token");
+    }
+
+    private long createAddress(String token, String receiverName) throws Exception {
+        String addressJson = mockMvc.perform(post("/api/addresses")
+                        .header("X-Session-Token", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "receiverName": "%s",
+                                  "receiverPhone": "13800000001",
+                                  "province": "Zhejiang",
+                                  "city": "Hangzhou",
+                                  "district": "Xihu",
+                                  "detail": "No. 1 Road",
+                                  "defaultAddress": true
+                                }
+                                """.formatted(receiverName)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return ((Number) JsonPath.read(addressJson, "$.id")).longValue();
     }
 }

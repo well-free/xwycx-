@@ -26,13 +26,24 @@ app:
     enabled: true
   mq:
     enabled: true
+    customer-order-timeout-topic: ${XWYCX_CUSTOMER_ORDER_TIMEOUT_TOPIC:customer-order-timeout-topic}
+  order:
+    timeout-seconds: ${XWYCX_ORDER_TIMEOUT_SECONDS:900}
   payment:
+    timeout-seconds: ${XWYCX_PAYMENT_TIMEOUT_SECONDS:900}
     mode: ${XWYCX_PAYMENT_MODE:gateway}
     callback-secret: ${XWYCX_PAYMENT_CALLBACK_SECRET}
     callback-base-url: ${XWYCX_PAYMENT_CALLBACK_BASE_URL:https://xwycx.xyz}
     alipay-app-id: ${XWYCX_ALIPAY_APP_ID:}
     alipay-sandbox-gateway-url: ${XWYCX_ALIPAY_SANDBOX_GATEWAY_URL:https://openapi-sandbox.dl.alipaydev.com/gateway.do}
     wechat-mch-id: ${XWYCX_WECHAT_MCH_ID:}
+    wechat-merchant-serial-number: ${XWYCX_WECHAT_MERCHANT_SERIAL_NUMBER:}
+    wechat-private-key-path: ${XWYCX_WECHAT_PRIVATE_KEY_PATH:}
+    wechat-api-v3-key: ${XWYCX_WECHAT_API_V3_KEY:}
+    wechat-notify-url: ${XWYCX_WECHAT_NOTIFY_URL:https://xwycx.xyz/api/payments/callbacks/wechat}
+    wechat-refund-notify-url: ${XWYCX_WECHAT_REFUND_NOTIFY_URL:https://xwycx.xyz/api/payments/callbacks/wechat/refund}
+    compensation-enabled: ${XWYCX_PAYMENT_COMPENSATION_ENABLED:true}
+    compensation-retry-interval-ms: ${XWYCX_PAYMENT_COMPENSATION_RETRY_INTERVAL_MS:60000}
   sms:
     provider: aliyun
     code-length: 6

@@ -90,16 +90,7 @@ public class CartService {
     }
 
     public void removePurchased(long userId, Collection<Long> productIds) {
-        if (userId <= 0) {
-            throw BusinessException.badRequest("userId must be positive");
-        }
-        if (productIds == null || productIds.stream().anyMatch(id -> id == null || id <= 0)) {
-            throw BusinessException.badRequest("productIds must contain only positive values");
-        }
-        List<Long> ids = productIds.stream()
-                .distinct()
-                .sorted()
-                .toList();
+        List<Long> ids = normalizedProductIds(userId, productIds);
         if (ids.isEmpty()) {
             return;
         }
@@ -130,6 +121,29 @@ public class CartService {
         removePurchasedNow(userId, ids, snapshots);
     }
 
+    public <T> T withMutationLocks(long userId,
+                                   Collection<Long> productIds,
+                                   Supplier<T> action) {
+        List<Long> ids = normalizedProductIds(userId, productIds);
+        return withUserLocks(List.of(userId), () -> withProductLocks(userId, ids, 0, action));
+    }
+
+    public void removePurchasedLocked(long userId, Collection<Long> productIds) {
+        List<Long> ids = normalizedProductIds(userId, productIds);
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("locked cart cleanup requires a transaction");
+        }
+        if (ids.isEmpty()) {
+            return;
+        }
+        cartItemMapper.selectList(new LambdaQueryWrapper<CartItemEntity>()
+                        .eq(CartItemEntity::getUserId, userId)
+                        .in(CartItemEntity::getProductId, ids))
+                .stream()
+                .map(CartCleanupSnapshot::from)
+                .forEach(this::deleteIfUnchanged);
+    }
+
     private void removePurchasedNow(long userId,
                                     List<Long> productIds,
                                     List<CartCleanupSnapshot> snapshots) {
@@ -146,6 +160,19 @@ public class CartService {
                 .eq(CartItemEntity::getUserId, snapshot.userId())
                 .eq(CartItemEntity::getProductId, snapshot.productId())
                 .eq(CartItemEntity::getVersion, snapshot.version()));
+    }
+
+    private List<Long> normalizedProductIds(long userId, Collection<Long> productIds) {
+        if (userId <= 0) {
+            throw BusinessException.badRequest("userId must be positive");
+        }
+        if (productIds == null || productIds.stream().anyMatch(id -> id == null || id <= 0)) {
+            throw BusinessException.badRequest("productIds must contain only positive values");
+        }
+        return productIds.stream()
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     public <T> T withUserLocks(Collection<Long> userIds, Supplier<T> action) {

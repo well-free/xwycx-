@@ -188,6 +188,7 @@ class WechatAuthServiceTest {
         List<String> expectedLocks = new ArrayList<>();
         expectedLocks.add("wechat:bind:identity:" + identity.getId());
         expectedLocks.add("wechat:bind:phone:13800000021");
+        userIds.forEach(userId -> expectedLocks.add("customer-order:user:" + userId));
         userIds.forEach(userId -> expectedLocks.add("cart:user:" + userId));
         userIds.forEach(userId -> expectedLocks.add("address:user:" + userId));
         userIds.forEach(userId -> List.of(1L, 2L)

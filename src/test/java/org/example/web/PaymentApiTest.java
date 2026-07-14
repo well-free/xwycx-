@@ -12,7 +12,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -24,10 +23,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {
         "app.redis.enabled=false",
-        "app.mq.enabled=false"
+        "app.mq.enabled=false",
+        "spring.datasource.url=jdbc:h2:mem:payment_api_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false"
 })
 @AutoConfigureMockMvc
-@Transactional
 class PaymentApiTest {
     @Autowired
     private MockMvc mockMvc;
