@@ -1,5 +1,6 @@
 <view class="page">
-  <view class="profile-head surface"><view class="avatar">{{avatar}}</view><view wx:if="{{current}}"><view class="phone">{{current.user.phone}}</view><view class="meta">{{current.user.role === 'ADMIN' ? '管理员' : '采购用户'}}</view></view><button wx:else class="primary" bindtap="login">登录 / 注册</button></view>
-  <view class="section menu"><view wx:for="{{menu}}" wx:key="url" class="row between" data-url="{{item.url}}" bindtap="open"><text>{{item.label}}</text><text class="muted">›</text></view></view>
+  <view class="profile-head"><view class="profile-kicker">账户与采购记录</view><view class="account-row"><view class="avatar">{{avatar}}</view><view wx:if="{{current}}" class="account-copy"><view class="phone">{{accountLabel}}</view><view class="role-tag">{{current.user.role === 'ADMIN' ? '管理员' : (current.user.phone ? '采购用户' : '待绑定手机号')}}</view></view><button wx:else class="primary login-action" bindtap="login">登录 / 注册</button></view></view>
+  <view class="section menu"><view wx:for="{{menu}}" wx:key="url" class="row menu-row" data-url="{{item.url}}" bindtap="open"><view class="menu-icon">{{item.icon}}</view><text class="menu-label">{{item.label}}</text><text class="menu-arrow">›</text></view></view>
+  <view wx:if="{{!current}}" class="guest-note"><view class="guest-title">登录后继续采购</view><view class="empty-copy">查看订单进度、保存配送地址并管理售后记录</view></view>
   <button wx:if="{{current}}" class="secondary logout" bindtap="logout">退出登录</button>
 </view>

@@ -1,5 +1,5 @@
 .admin-head { display: flex; align-items: center; justify-content: space-between; padding: 20rpx 0 30rpx; }
 .title { font-size: 40rpx; font-weight: 800; }
-.back { color: #087f5b; }
+.back { color: #147451; }
 .menu { padding: 0 28rpx; margin-left: -28rpx; margin-right: -28rpx; }
 .entry-title { font-weight: 700; }

@@ -1,7 +1,11 @@
-.home-head { display: flex; align-items: center; justify-content: space-between; padding: 18rpx 0 24rpx; }
-.brand { font-size: 40rpx; font-weight: 800; }
-.sub { margin-left: 18rpx; color: #6b7571; font-size: 24rpx; }
-.cart-link { color: #087f5b; font-weight: 700; }
-.search { min-height: 76rpx; padding: 0 26rpx; background: #f1f4f2; border-radius: 8rpx; }
-.compact-tabs { margin-top: 18rpx; }
-.retry { margin: 24rpx auto 0; }
+.home-page { padding-top: 12rpx; }
+.home-head { display: flex; align-items: center; justify-content: space-between; padding: 24rpx 0 30rpx; }
+.eyebrow { margin-bottom: 4rpx; color: #74827c; font-size: 22rpx; }
+.brand { font-size: 42rpx; font-weight: 800; line-height: 1.2; }
+.cart-link { min-height: 64rpx; padding: 0 22rpx; color: #0b5038; background: #e8f3ed; font-size: 25rpx; font-weight: 700; }
+.search-shell { display: flex; align-items: center; min-height: 88rpx; padding: 0 24rpx; background: #f0f4f1; border: 1rpx solid #e3e9e5; border-radius: 12rpx; }
+.search-icon { width: 44rpx; color: #147451; font-size: 38rpx; line-height: 1; }
+.search { flex: 1; height: 86rpx; padding-left: 8rpx; }
+.catalog-head { display: flex; align-items: flex-end; justify-content: space-between; padding: 24rpx 0 10rpx; }
+.catalog-head .section-title { padding-bottom: 2rpx; }
+.catalog-count { padding-bottom: 4rpx; color: #74827c; font-size: 24rpx; font-variant-numeric: tabular-nums; }

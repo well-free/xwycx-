@@ -1,3 +1,7 @@
-.placeholder { display: flex; align-items: center; justify-content: center; color: #087f5b; background: #e9f6f1; font-weight: 700; }
-.foot { margin-top: 16rpx; }
-.add { min-width: 150rpx; background: #087f5b; color: #fff; font-size: 24rpx; }
+.placeholder { display: flex; align-items: center; justify-content: center; color: #0b5038; background: #e8f3ed; font-weight: 700; }
+.product-spec { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stock { display: flex; align-items: center; gap: 12rpx; margin-top: 10rpx; color: #147451; font-size: 23rpx; font-weight: 600; }
+.stock-low { color: #d9573f; }
+.sku { color: #89958f; font-weight: 400; }
+.foot { margin-top: 14rpx; }
+.add { min-width: 112rpx; min-height: 58rpx; padding: 0 24rpx; background: #147451; color: #fff; font-size: 24rpx; font-weight: 700; }

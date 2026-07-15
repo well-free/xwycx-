@@ -1,0 +1,11 @@
+.bind-page { min-height: 100vh; padding: 120rpx 52rpx 60rpx; background: #fff; }
+.brand { font-size: 48rpx; font-weight: 800; color: #17201d; }
+.intro { margin-top: 12rpx; color: #6b7571; line-height: 1.7; }
+.form { margin-top: 60rpx; }
+.form .input { margin-bottom: 20rpx; }
+.code-row { display: flex; gap: 16rpx; }
+.code-input { flex: 1; }
+.code-row button { width: 220rpx; }
+.submit { width: 100%; margin-top: 34rpx; }
+.text-button { width: 100%; margin-top: 18rpx; color: #6b7571; background: transparent; }
+.error { margin-top: 20rpx; color: #e45d43; }

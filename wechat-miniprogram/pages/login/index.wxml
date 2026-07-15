@@ -1,5 +1,5 @@
 <view class="login-page">
-  <view class="brand">小卫优采</view>
+  <view class="brand">小物优采</view>
   <view class="intro">一次性用品采购</view>
   <view class="tabs login-tabs">
     <view class="tab {{mode === 'wechat' ? 'active' : ''}}" data-mode="wechat" bindtap="setMode">微信登录</view>

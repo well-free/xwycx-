@@ -1,5 +1,17 @@
-.profile-head { display: flex; align-items: center; gap: 24rpx; padding: 36rpx 28rpx; margin: -24rpx -28rpx 0; }
-.avatar { width: 104rpx; height: 104rpx; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #087f5b; color: #fff; font-size: 40rpx; font-weight: 800; }
+.profile-head { padding: 24rpx 28rpx 40rpx; margin: -24rpx -28rpx 0; color: #fff; background: #164735; }
+.profile-kicker { margin-bottom: 30rpx; color: rgba(255, 255, 255, .68); font-size: 23rpx; }
+.account-row { display: flex; align-items: center; gap: 24rpx; min-height: 104rpx; }
+.avatar { width: 104rpx; height: 104rpx; display: flex; flex: 0 0 104rpx; align-items: center; justify-content: center; border: 1rpx solid rgba(255, 255, 255, .3); border-radius: 12rpx; background: rgba(255, 255, 255, .12); color: #fff; font-size: 40rpx; font-weight: 800; }
+.account-copy { min-width: 0; }
 .phone { font-size: 34rpx; font-weight: 700; }
-.menu { padding: 0 28rpx; }
-.logout { width: 100%; margin-top: 40rpx; }
+.role-tag { display: inline-flex; margin-top: 12rpx; padding: 6rpx 12rpx; color: #d7eee4; background: rgba(255, 255, 255, .1); border-radius: 5rpx; font-size: 22rpx; }
+.login-action { min-width: 230rpx; color: #0b5038; background: #fff; box-shadow: none; }
+.menu { overflow: hidden; padding: 0 24rpx; }
+.menu-row { gap: 20rpx; }
+.menu-icon { display: flex; align-items: center; justify-content: center; width: 60rpx; height: 60rpx; color: #147451; background: #e8f3ed; border-radius: 8rpx; font-size: 23rpx; font-weight: 700; }
+.menu-label { flex: 1; color: #17231f; font-weight: 600; }
+.menu-arrow { color: #9aa59f; font-size: 40rpx; font-weight: 300; }
+.guest-note { margin-top: 24rpx; padding: 32rpx 28rpx; background: #fff; border: 1rpx solid #dfe7e2; border-radius: 12rpx; }
+.guest-title { color: #17231f; font-size: 30rpx; font-weight: 700; }
+.guest-note .empty-copy { margin-top: 10rpx; }
+.logout { width: 100%; margin-top: 36rpx; color: #596760; border-color: #cdd8d2; }

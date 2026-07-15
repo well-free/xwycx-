@@ -1,12 +1,14 @@
-<view class="page surface">
-  <view wx:if="{{loading}}" class="loading">正在加载采购车...</view>
-  <view wx:elif="{{!items.length}}" class="empty">采购车还是空的</view>
+<view class="page surface cart-page">
+  <view class="cart-head"><view class="section-title">采购车</view><view class="section-caption">{{items.length ? items.length + ' 种商品' : '集中确认本次采购'}}</view></view>
+  <view wx:if="{{loading}}" class="skeleton-list"><view wx:for="{{[1, 2]}}" wx:key="*this" class="skeleton-row"><view class="skeleton-block skeleton-image"></view><view class="skeleton-content"><view class="skeleton-block skeleton-line"></view><view class="skeleton-block skeleton-line short"></view><view class="skeleton-block skeleton-line price-line"></view></view></view></view>
+  <view wx:elif="{{error}}" class="empty"><view class="empty-mark">!</view><view class="empty-title">采购车加载失败</view><view class="empty-copy">{{error}}</view><button class="secondary empty-action" bindtap="load">重新加载</button></view>
+  <view wx:elif="{{!items.length}}" class="empty"><view class="empty-mark">＋</view><view class="empty-title">采购车还是空的</view><view class="empty-copy">从常用耗材中选择商品，统一结算更省时间</view><button class="primary empty-action" bindtap="browse">去选商品</button></view>
   <view wx:for="{{items}}" wx:key="productId" class="cart-row">
     <image wx:if="{{item.mainImage}}" class="thumb" src="{{item.mainImage}}" mode="aspectFill" />
     <view wx:else class="thumb placeholder">{{item.shortName}}</view>
     <view class="product-main"><view class="product-name">{{item.name}}</view><view class="meta">{{item.sku}} · ¥{{item.currentPrice}}</view>
-      <view class="between cart-foot"><view class="stepper"><text data-index="{{index}}" data-delta="-1" bindtap="step">−</text><text class="value">{{item.quantity}}</text><text data-index="{{index}}" data-delta="1" bindtap="step">＋</text></view><text class="danger" data-id="{{item.productId}}" bindtap="remove">删除</text></view>
+      <view class="between cart-foot"><view class="stepper"><text class="step-control" data-index="{{index}}" data-delta="-1" bindtap="step">−</text><text class="value">{{item.quantity}}</text><text class="step-control" data-index="{{index}}" data-delta="1" bindtap="step">＋</text></view><text class="remove-action" data-id="{{item.productId}}" bindtap="remove">移除</text></view>
     </view>
   </view>
-  <view wx:if="{{items.length}}" class="fixed-action between"><view><text class="muted">合计 </text><text class="price">¥{{total}}</text></view><button class="primary checkout" bindtap="checkout">去结算</button></view>
+  <view wx:if="{{items.length && !loading}}" class="fixed-action between cart-action"><view><view class="total-label">采购合计</view><text class="price">¥{{total}}</text></view><button class="primary checkout" bindtap="checkout">确认结算</button></view>
 </view>

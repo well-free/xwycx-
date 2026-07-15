@@ -1,0 +1,65 @@
+spring:
+  datasource:
+    url: ${XWYCX_DB_URL:jdbc:mysql://localhost:3306/xwycx_order?useSSL=false&serverTimezone=UTC&characterEncoding=utf8}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${XWYCX_DB_USERNAME}
+    password: ${XWYCX_DB_PASSWORD}
+  sql:
+    init:
+      mode: never
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  data:
+    redis:
+      host: ${XWYCX_REDIS_HOST:localhost}
+      port: ${XWYCX_REDIS_PORT:6379}
+rocketmq:
+  name-server: ${XWYCX_ROCKETMQ_NAMESERVER:localhost:9876}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+app:
+  matching:
+    enabled: ${XWYCX_MATCHING_ENABLED:false}
+  outbox:
+    enabled: true
+    poll-interval-ms: ${XWYCX_OUTBOX_POLL_INTERVAL_MS:1000}
+    retry-delay-ms: ${XWYCX_OUTBOX_RETRY_DELAY_MS:30000}
+  redis:
+    enabled: true
+  mq:
+    enabled: true
+    customer-order-timeout-topic: ${XWYCX_CUSTOMER_ORDER_TIMEOUT_TOPIC:customer-order-timeout-topic}
+  order:
+    timeout-seconds: ${XWYCX_ORDER_TIMEOUT_SECONDS:900}
+  payment:
+    timeout-seconds: ${XWYCX_PAYMENT_TIMEOUT_SECONDS:900}
+    mode: ${XWYCX_PAYMENT_MODE:gateway}
+    callback-secret: ${XWYCX_PAYMENT_CALLBACK_SECRET}
+    callback-base-url: ${XWYCX_PAYMENT_CALLBACK_BASE_URL:https://xwycx.xyz}
+    alipay-app-id: ${XWYCX_ALIPAY_APP_ID:}
+    alipay-sandbox-gateway-url: ${XWYCX_ALIPAY_SANDBOX_GATEWAY_URL:https://openapi-sandbox.dl.alipaydev.com/gateway.do}
+    wechat-mch-id: ${XWYCX_WECHAT_MCH_ID:}
+    wechat-merchant-serial-number: ${XWYCX_WECHAT_MERCHANT_SERIAL_NUMBER:}
+    wechat-private-key-path: ${XWYCX_WECHAT_PRIVATE_KEY_PATH:}
+    wechat-api-v3-key: ${XWYCX_WECHAT_API_V3_KEY:}
+    wechat-notify-url: ${XWYCX_WECHAT_NOTIFY_URL:https://xwycx.xyz/api/payments/callbacks/wechat}
+    wechat-refund-notify-url: ${XWYCX_WECHAT_REFUND_NOTIFY_URL:https://xwycx.xyz/api/payments/callbacks/wechat/refund}
+    compensation-enabled: ${XWYCX_PAYMENT_COMPENSATION_ENABLED:true}
+    compensation-retry-interval-ms: ${XWYCX_PAYMENT_COMPENSATION_RETRY_INTERVAL_MS:60000}
+  sms:
+    provider: aliyun
+    code-length: 6
+    code-ttl-seconds: 300
+    aliyun-access-key-id: ${XWYCX_ALIYUN_SMS_ACCESS_KEY_ID:}
+    aliyun-access-key-secret: ${XWYCX_ALIYUN_SMS_ACCESS_KEY_SECRET:}
+    aliyun-sign-name: ${XWYCX_ALIYUN_SMS_SIGN_NAME:}
+    aliyun-template-code: ${XWYCX_ALIYUN_SMS_TEMPLATE_CODE:}
+    aliyun-endpoint: ${XWYCX_ALIYUN_SMS_ENDPOINT:dysmsapi.aliyuncs.com}
+  wechat:
+    app-id: ${XWYCX_WECHAT_APP_ID}
+    app-secret: ${XWYCX_WECHAT_APP_SECRET}
+    code2-session-url: https://api.weixin.qq.com/sns/jscode2session

@@ -1,1 +1,7 @@
-/* Shared styles come from app.wxss. */
+.category-page { padding-top: 12rpx; }
+.category-head { display: flex; align-items: flex-end; justify-content: space-between; padding: 16rpx 0 28rpx; }
+.category-head .section-title { padding-bottom: 2rpx; font-size: 40rpx; }
+.result-count { padding-bottom: 4rpx; color: #74827c; font-size: 24rpx; font-variant-numeric: tabular-nums; }
+.search-shell { display: flex; align-items: center; min-height: 88rpx; margin-bottom: 14rpx; padding: 0 24rpx; background: #f0f4f1; border: 1rpx solid #e3e9e5; border-radius: 12rpx; }
+.search-icon { width: 44rpx; color: #147451; font-size: 38rpx; line-height: 1; }
+.search { flex: 1; height: 86rpx; padding-left: 8rpx; }
