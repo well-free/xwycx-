@@ -16,8 +16,13 @@ Page({
   async submit() {
     this.setData({ loading: true, error: '' })
     try {
-      if (this.data.mode === 'wechat') await auth.wechatLogin()
-      else await auth.smsLogin(this.data.phone, this.data.code)
+      const current = this.data.mode === 'wechat'
+        ? await auth.wechatLogin()
+        : await auth.smsLogin(this.data.phone, this.data.code)
+      if (this.data.mode === 'wechat' && current.user && !current.user.phone) {
+        wx.redirectTo({ url: `/pages/bind-phone/index?redirect=${encodeURIComponent(this.redirect)}` })
+        return
+      }
       wx.reLaunch({ url: this.redirect })
     } catch (error) { this.setData({ error: error.message }) }
     finally { this.setData({ loading: false }) }

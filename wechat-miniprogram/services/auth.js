@@ -15,6 +15,10 @@ async function smsLogin(phone, code) {
   return save(await request('/api/auth/sms/login', { method: 'POST', data: { phone, code } }))
 }
 
+async function bindPhone(phone, code) {
+  return save(await request('/api/auth/wechat/bind-phone', { method: 'POST', data: { phone, code } }))
+}
+
 async function restore() {
   const current = session.get()
   if (!current) return null
@@ -30,4 +34,4 @@ function save(response) {
   return session.set({ token: response.token, user: response.user })
 }
 
-module.exports = { wechatLogin, sendSms, smsLogin, restore, logout }
+module.exports = { wechatLogin, sendSms, smsLogin, bindPhone, restore, logout }

@@ -5,6 +5,7 @@
     "pages/cart/index",
     "pages/profile/index",
     "pages/login/index",
+    "pages/bind-phone/index",
     "pages/product-detail/index",
     "pages/checkout/index",
     "pages/address-list/index",
@@ -22,7 +23,7 @@
     "pages/admin/payments/index"
   ],
   "window": {
-    "navigationBarTitleText": "小卫优采",
+    "navigationBarTitleText": "小物优采",
     "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#f5f7f6"

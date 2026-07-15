@@ -3,6 +3,9 @@ function menuFor(user) {
     { label: '我的订单', url: '/pages/order-list/index' },
     { label: '配送地址', url: '/pages/address-list/index' }
   ]
+  if (user && !user.phone) {
+    menu.unshift({ label: '绑定手机号', url: '/pages/bind-phone/index' })
+  }
   if (user && user.role === 'ADMIN') {
     menu.push({ label: '运营工作台', url: '/pages/admin/home/index' })
   }
