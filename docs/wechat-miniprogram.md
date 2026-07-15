@@ -2,7 +2,7 @@
 
 ## 导入项目
 
-1. 启动本地 Spring Boot 服务：`mvn spring-boot:run`。
+1. 启动本地 Spring Boot 服务：`mvn -f backend/pom.xml spring-boot:run`。
 2. 打开微信开发者工具，导入仓库中的 `wechat-miniprogram/`。
 3. 本地开发可使用测试 AppID，并在开发者工具中临时勾选“不校验合法域名、web-view、TLS 版本以及 HTTPS 证书”。该选项只能用于本地开发。
 4. `develop` 版本默认请求 `http://localhost:8080`，`trial` 和 `release` 版本自动请求 `https://xwycx.xyz`。

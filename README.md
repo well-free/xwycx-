@@ -2,12 +2,12 @@
 
 > 当前同时提供 Web 页面和原生微信小程序。小程序源码位于 `wechat-miniprogram/`，支持微信登录与短信登录、商品采购、购物车、地址、订单、mock 支付、微信支付 API v3 参数、退款及管理员工作台。开发与上线说明见 `docs/wechat-miniprogram.md`、`docs/wechat-pay-v3.md` 和 `docs/deployment.md`。
 
-一个面向一次性用品供应和采购场景的商城采购系统，域名为 `xwycx.xyz`。系统覆盖手机号登录、商品浏览、采购订单、支付、退款、后台商品运营、商品缓存、限流和部署上线配置。默认使用 H2 内存库便于本地运行，生产 profile 使用 MySQL、Redis、RocketMQ、Flyway 和 Nginx。
+一个面向一次性用品供应和采购场景的单商家直营商城，域名为 `xwycx.xyz`。一个商家维护统一商品与库存，多个用户独立登录、下单、支付和退款，不涉及多商户拆单或分账。默认使用 H2 内存库便于本地运行，生产 profile 使用 MySQL、Redis、RocketMQ、Flyway 和 Nginx。
 
 ## 技术栈
 
-- Java 21
-- Spring Boot 3.3.5
+- Java 25 LTS
+- Spring Boot 4.0.3
 - MyBatis-Plus
 - H2 / MySQL
 - Redis / Redisson
@@ -15,6 +15,18 @@
 - Flyway
 - Maven
 - 原生 HTML / CSS / JavaScript
+
+## 项目目录
+
+```text
+backend/             Spring Boot 后端、数据库迁移与后端测试
+frontend/            Web 前端 HTML、CSS 和 JavaScript
+wechat-miniprogram/  原生微信小程序
+deploy/              Nginx、systemd 与备份脚本
+docs/                开发和部署文档
+```
+
+根目录 `pom.xml` 是 Maven 聚合入口。后端构建会将 `frontend/` 作为静态资源打入 Spring Boot JAR，因此源码保持独立，部署方式不变。
 
 ## 已实现功能
 
@@ -25,7 +37,8 @@
 - 用户角色：`CUSTOMER` / `ADMIN`
 - 商品列表与商品详情
 - 商城采购订单创建
-- 库存扣减与取消释放
+- 下单冻结库存，取消或超时释放库存
+- 发货后冻结库存转为已售库存
 - 我的订单查询
 - 管理员发货
 
@@ -35,7 +48,7 @@
 - 价格优先、时间优先撮合
 - 支持部分成交
 - 成交记录查询
-- 当前不作为首页主流程
+- 默认关闭且不作为商城主流程；仅通过 `app.matching.enabled=true` 兼容开启
 
 ### 支付与退款
 
@@ -70,7 +83,8 @@
 - Redisson 生产配置预留
 - MyBatis-Plus 乐观锁字段
 - RocketMQ 延迟消息预留
-- 本地调度实现订单超时关闭
+- 事务 Outbox 可靠记录订单超时事件并支持失败重试
+- 本地或 RocketMQ 调度实现订单超时关闭
 - 商家目录变更模拟入口，触发缓存淘汰和 MQ 消息
 
 ### 前端页面
@@ -105,6 +119,7 @@ GET  /api/auth/me
 ### 商品
 
 ```http
+GET  /api/store
 GET  /api/products
 GET  /api/products/{id}
 ```
@@ -218,16 +233,16 @@ GET  /api/health
 项目默认使用 `local` profile 和 H2 内存数据库。
 
 ```powershell
-$env:JAVA_HOME=(Resolve-Path .jdk\jdk-21.0.11).Path
+$env:JAVA_HOME='C:\Users\1\Downloads\jdk-25_windows-x64_bin\jdk-25.0.3'
 $env:Path="$env:JAVA_HOME\bin;$env:Path"
-mvn spring-boot:run
+mvn -f backend/pom.xml spring-boot:run
 ```
 
 或打包后运行：
 
 ```powershell
 mvn package -DskipTests
-java -jar target/xwycx-disposable-order-system-1.0-SNAPSHOT.jar
+java -jar backend/target/xwycx-disposable-order-system-1.0-SNAPSHOT.jar
 ```
 
 启动后打开根路径：
@@ -255,14 +270,14 @@ http://localhost:8080/admin.html     后台运营
 
 本地验证码固定为 `123456`；普通用户可用 `13800000001`，管理员可用 `13900000000`。
 
-如果提示 `Port 8080 was already in use`，说明 8080 端口被占用。可以停止占用进程，或在 `application.yml` 中修改 `server.port`。
+如果提示 `Port 8080 was already in use`，说明 8080 端口被占用。可以停止占用进程，或在 `backend/src/main/resources/application.yml` 中修改 `server.port`。
 
 ## 生产配置
 
 生产 profile 配置文件：
 
 ```text
-src/main/resources/application-prod.yml
+backend/src/main/resources/application-prod.yml
 ```
 
 已预留：
@@ -277,7 +292,7 @@ src/main/resources/application-prod.yml
 启动生产 profile：
 
 ```powershell
-java -jar target/xwycx-disposable-order-system-1.0-SNAPSHOT.jar --spring.profiles.active=prod
+java -jar backend/target/xwycx-disposable-order-system-1.0-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
 详细部署说明：
@@ -307,6 +322,8 @@ deploy/mysql-backup.sh
 - `payment_orders`
 - `payment_callbacks`
 - `refund_orders`
+- `store_settings`
+- `outbox_events`
 
 默认初始化商品：
 
@@ -317,8 +334,8 @@ deploy/mysql-backup.sh
 初始化脚本：
 
 ```text
-src/main/resources/schema.sql
-src/main/resources/data.sql
+backend/src/main/resources/schema.sql
+backend/src/main/resources/data.sql
 ```
 
 ## 测试
@@ -327,6 +344,7 @@ src/main/resources/data.sql
 
 ```powershell
 mvn test
+node --test wechat-miniprogram/tests/*.test.js
 ```
 
 当前覆盖：

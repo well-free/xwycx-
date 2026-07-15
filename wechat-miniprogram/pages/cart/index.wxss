@@ -1,4 +1,11 @@
-.cart-row { display: flex; gap: 22rpx; padding: 24rpx 0; border-bottom: 1rpx solid #e2e8e5; }
-.placeholder { display: flex; align-items: center; justify-content: center; color: #087f5b; background: #e9f6f1; font-weight: 700; }
+.cart-page { padding-top: 12rpx; }
+.cart-head { padding: 16rpx 0 18rpx; }
+.cart-head .section-title { padding-bottom: 2rpx; font-size: 40rpx; }
+.cart-row { display: flex; gap: 22rpx; padding: 28rpx 0; border-bottom: 1rpx solid #dfe7e2; }
+.placeholder { display: flex; align-items: center; justify-content: center; color: #0b5038; background: #e8f3ed; font-weight: 700; }
 .cart-foot { margin-top: 20rpx; }
-.checkout { width: 230rpx; }
+.step-control { min-height: 58rpx; line-height: 58rpx; background: #f4f7f5; }
+.remove-action { padding: 14rpx 4rpx 14rpx 20rpx; color: #74827c; font-size: 24rpx; }
+.cart-action { box-shadow: 0 -12rpx 30rpx rgba(23, 55, 43, .07); }
+.total-label { margin-bottom: 2rpx; color: #74827c; font-size: 22rpx; }
+.checkout { width: 240rpx; }

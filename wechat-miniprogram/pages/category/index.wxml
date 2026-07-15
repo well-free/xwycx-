@@ -1,1 +1,8 @@
-<view class="page surface"><view class="section-title">全部商品</view><view wx:if="{{loading}}" class="loading">加载中...</view><product-card wx:for="{{items}}" wx:key="id" item="{{item}}" binddetail="detail" bindadd="add" /></view>
+<view class="page surface category-page">
+  <view class="category-head"><view><view class="section-title">商品分类</view><view class="section-caption">按名称、规格或 SKU 查找</view></view><text class="result-count">{{items.length}} 件</text></view>
+  <view class="search-shell"><text class="search-icon">⌕</text><input class="search" placeholder="搜索全部商品" value="{{keyword}}" bindinput="search" confirm-type="search" /></view>
+  <view wx:if="{{loading}}" class="skeleton-list"><view wx:for="{{[1, 2, 3]}}" wx:key="*this" class="skeleton-row"><view class="skeleton-block skeleton-image"></view><view class="skeleton-content"><view class="skeleton-block skeleton-line"></view><view class="skeleton-block skeleton-line short"></view><view class="skeleton-block skeleton-line price-line"></view></view></view></view>
+  <view wx:elif="{{error}}" class="empty"><view class="empty-mark">!</view><view class="empty-title">目录加载失败</view><view class="empty-copy">{{error}}</view><button class="secondary empty-action" bindtap="load">重新加载</button></view>
+  <view wx:elif="{{!items.length}}" class="empty"><view class="empty-mark">⌕</view><view class="empty-title">没有匹配结果</view><view class="empty-copy">试试更短的关键词或商品 SKU</view></view>
+  <product-card wx:for="{{items}}" wx:key="id" item="{{item}}" binddetail="detail" bindadd="add" />
+</view>

@@ -1,6 +1,6 @@
 # xwycx.xyz 单机生产部署
 
-首版部署组件：Ubuntu 22.04+、JDK 21、MySQL 8、Redis、RocketMQ、Nginx、Certbot。
+首版部署组件：Ubuntu 22.04+、JDK 25 LTS、MySQL 8、Redis、RocketMQ、Nginx、Certbot。
 
 ## 1. 服务器目录
 
@@ -45,6 +45,9 @@ XWYCX_PAYMENT_CALLBACK_SECRET=replace-with-random-value
 XWYCX_PAYMENT_CALLBACK_BASE_URL=https://xwycx.xyz
 XWYCX_PAYMENT_TIMEOUT_SECONDS=900
 XWYCX_ORDER_TIMEOUT_SECONDS=900
+XWYCX_MATCHING_ENABLED=false
+XWYCX_OUTBOX_POLL_INTERVAL_MS=1000
+XWYCX_OUTBOX_RETRY_DELAY_MS=30000
 
 XWYCX_WECHAT_APP_ID=replace-me
 XWYCX_WECHAT_APP_SECRET=replace-me
@@ -58,11 +61,13 @@ XWYCX_WECHAT_REFUND_NOTIFY_URL=https://xwycx.xyz/api/payments/callbacks/wechat/r
 
 使用 RAM 子账号发送阿里云短信，只授予短信发送权限。微信 API v3 Key 必须恰好 32 个字符。
 
+生产主流程是单商家直营商城。`XWYCX_MATCHING_ENABLED` 应保持为 `false`；只有兼容旧撮合接口时才临时开启。商品库存分为可用、冻结和已售：下单冻结库存，取消或超时释放库存，发货后转为已售。订单超时事件先写入数据库 Outbox，再由轮询任务投递；轮询和失败重试间隔分别由两个 Outbox 环境变量控制。
+
 ## 4. 构建与发布
 
 ```bash
 mvn -Pprod clean package
-sudo cp target/xwycx-disposable-order-system-1.0-SNAPSHOT.jar /opt/xwycx/releases/xwycx-$(date +%Y%m%d%H%M%S).jar
+sudo cp backend/target/xwycx-disposable-order-system-1.0-SNAPSHOT.jar /opt/xwycx/releases/xwycx-$(date +%Y%m%d%H%M%S).jar
 sudo ln -sfn /opt/xwycx/releases/xwycx-YYYYMMDDHHMMSS.jar /opt/xwycx/xwycx-disposable-order-system.jar
 sudo cp deploy/xwycx.service /etc/systemd/system/xwycx.service
 sudo systemctl daemon-reload

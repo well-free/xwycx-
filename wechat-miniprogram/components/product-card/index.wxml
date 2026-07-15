@@ -3,11 +3,11 @@
   <view wx:else class="thumb placeholder" bindtap="detail">{{shortName}}</view>
   <view class="product-main">
     <view class="product-name" bindtap="detail">{{item.name}}</view>
-    <view class="meta">{{item.sku}} · {{item.spec || '标准规格'}} · {{item.unit || '件'}}</view>
-    <view class="meta">库存 {{item.stock}}</view>
+    <view class="meta product-spec">{{item.spec || '标准规格'}} · {{item.unit || '件'}}</view>
+    <view class="stock {{item.stock <= 10 ? 'stock-low' : ''}}">{{item.stock > 0 ? '现货 ' + item.stock : '暂时缺货'}}<text class="sku">SKU {{item.sku}}</text></view>
     <view class="between foot">
       <text class="price">¥{{item.price}}</text>
-      <button class="add" size="mini" disabled="{{item.stock <= 0}}" bindtap="add">{{item.stock > 0 ? '加入采购车' : '已售罄'}}</button>
+      <button class="add" size="mini" disabled="{{item.stock <= 0}}" bindtap="add">{{item.stock > 0 ? '加入' : '缺货'}}</button>
     </view>
   </view>
 </view>

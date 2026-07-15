@@ -6,6 +6,6 @@
 .label { width: 160rpx; }
 .remark { flex: 1; text-align: right; }
 .radio { width: 36rpx; height: 36rpx; border: 2rpx solid #b9c3bf; border-radius: 50%; }
-.radio.selected { border: 10rpx solid #087f5b; }
+.radio.selected { border: 10rpx solid #147451; }
 .submit { width: 240rpx; }
 .error { padding: 24rpx 28rpx; color: #e45d43; }
