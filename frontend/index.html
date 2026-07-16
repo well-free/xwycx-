@@ -1,61 +1,10 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0d5c3b" />
-  <title>小物优采 - 一次性用品采购</title>
-  <link rel="stylesheet" href="/styles.css" />
-</head>
-<body>
-  <main class="app-shell commerce-app">
-    <header class="topbar commerce-topbar">
-      <a class="brand" href="/index.html" aria-label="小物优采首页">
-        <span class="brand-mark">优</span>
-        <div><h1>小物优采</h1><p>xwycx.xyz</p></div>
-      </a>
-      <nav class="workspace-tabs" aria-label="页面导航">
-        <a class="active" href="/index.html">首页</a>
-        <a href="/products.html">商品采购</a>
-        <a href="/orders.html">我的订单</a>
-      </nav>
-      <div class="topbar-actions">
-        <div class="health-pill" id="userStatus"><span class="health-dot"></span>未登录</div>
-        <div class="health-pill" id="serverStatus"><span class="health-dot"></span>连接中</div>
-        <button id="refreshBtn" type="button" class="icon-button" title="刷新数据" aria-label="刷新数据">↻</button>
-        <button id="logoutBtn" type="button" class="icon-button" title="退出登录" aria-label="退出登录">↪</button>
-      </div>
-    </header>
-
-    <section class="commerce-hero" id="commerceHero" aria-label="一次性用品采购">
-      <div class="hero-copy">
-        <p class="section-kicker">xwycx selection</p>
-        <h2>一次性用品，省心采购</h2>
-        <p>餐饮、办公、活动耗材，一站备齐。库存与订单状态实时同步，让每次补货更直接。</p>
-        <div class="hero-actions">
-          <a class="primary-action nav-action" href="/products.html">查看热销商品</a>
-          <a class="secondary-action nav-action" href="/orders.html">查看我的订单</a>
-        </div>
-      </div>
-      <div class="hero-visual" role="img" aria-label="一次性用品与清洁防护用品">
-        <div class="hero-visual-note"><strong>日常耗材精选</strong><small>按需采购，库存可见</small></div>
-      </div>
-    </section>
-
-    <section class="metric-grid" aria-label="采购概览">
-      <article class="metric"><span class="metric-label">当前账号</span><strong id="metricUser">未登录</strong><small id="metricRole">请先登录后采购</small></article>
-      <article class="metric"><span class="metric-label">在售商品</span><strong id="metricProducts">0</strong><small>个 SKU 可采购</small></article>
-      <article class="metric"><span class="metric-label">我的订单</span><strong id="metricOrders">0</strong><small id="metricPending">0 笔待支付</small></article>
-      <article class="metric"><span class="metric-label">已完成支付</span><strong id="metricPaidOrders">0</strong><small id="metricPaid">0 笔支付完成</small></article>
-      <span id="metricPayments" hidden>0</span>
-    </section>
-
-    <section class="dashboard-links" aria-label="快捷入口">
-      <a class="feature-entry" href="/products.html"><span>Catalog</span><strong>商品采购</strong><small>查看在售一次性用品，按 SKU、规格和库存快速选品。</small></a>
-      <a class="feature-entry" href="/orders.html"><span>Orders</span><strong>订单与支付</strong><small>集中处理待支付订单、支付记录和售后退款。</small></a>
-    </section>
-  </main>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d5c3b" />
+    <title>小物优采</title>
+  </head>
+  <body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body>
 </html>

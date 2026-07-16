@@ -9,4 +9,4 @@ mvn -f backend/pom.xml spring-boot:run
 mvn -pl backend test
 ```
 
-Web 前端源码位于 `../frontend/`，Maven 构建时会自动复制到 JAR 的 `static/` 目录。
+Web 前端源码位于 `../frontend/`，Maven 构建时会自动执行 Vite 构建，并把 `frontend/dist/` 复制到 JAR 的 `static/` 目录。

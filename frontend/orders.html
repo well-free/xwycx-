@@ -1,52 +1,10 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0d5c3b" />
-  <title>我的订单 - 小物优采</title>
-  <link rel="stylesheet" href="/styles.css" />
-</head>
-<body>
-  <main class="app-shell commerce-app">
-    <header class="topbar commerce-topbar">
-      <a class="brand" href="/index.html" aria-label="小物优采首页"><span class="brand-mark">优</span><div><h1>小物优采</h1><p>xwycx.xyz</p></div></a>
-      <nav class="workspace-tabs" aria-label="页面导航"><a href="/index.html">首页</a><a href="/products.html">商品采购</a><a class="active" href="/orders.html">我的订单</a></nav>
-      <div class="topbar-actions">
-        <div class="health-pill" id="userStatus"><span class="health-dot"></span>未登录</div>
-        <div class="health-pill" id="serverStatus"><span class="health-dot"></span>连接中</div>
-        <button id="refreshBtn" type="button" class="icon-button" title="刷新数据" aria-label="刷新数据">↻</button>
-        <button id="logoutBtn" type="button" class="icon-button" title="退出登录" aria-label="退出登录">↪</button>
-      </div>
-    </header>
-
-    <section class="page-heading"><div><p class="section-kicker">Order center</p><h2>我的订单</h2><p>查看采购进度，处理待支付订单与售后记录。</p></div><a class="primary-action" href="/products.html">继续采购</a></section>
-
-    <section class="commerce-lower">
-      <section class="panel table-panel" aria-labelledby="ordersTitle">
-        <div class="panel-head">
-          <div><p class="section-kicker">Purchase</p><h2 id="ordersTitle">采购订单</h2></div>
-          <div class="order-tools"><select id="orderStatusFilter" aria-label="订单状态筛选"><option value="ALL">全部状态</option><option value="PENDING_PAYMENT">待支付</option><option value="PAID">已支付</option><option value="FULFILLING">备货中</option><option value="SHIPPED">已发货</option><option value="REFUNDED">已退款</option></select><button id="refreshOrdersBtn" type="button" class="secondary-action">刷新订单</button></div>
-        </div>
-        <div id="ordersTable" class="table-wrap"></div>
-      </section>
-
-      <aside class="side-stack">
-        <section class="panel payment-panel" id="paymentPanel" aria-labelledby="paymentTitle">
-          <div class="panel-head"><div><p class="section-kicker">Payment</p><h2 id="paymentTitle">支付与售后</h2></div></div>
-          <div class="ops-grid"><label><span>订单 ID</span><input id="paymentOrderIdInput" type="number" placeholder="从订单列表选择" /></label><label><span>支付渠道</span><select id="paymentChannelInput"><option value="ALIPAY">支付宝</option><option value="WECHAT">微信支付</option></select></label></div>
-          <div class="button-row payment-actions"><button id="paymentCreateBtn" type="button">发起支付</button><button id="paymentSuccessBtn" type="button" class="secondary-action">模拟回调</button><button id="paymentRefundBtn" type="button" class="secondary-action">申请退款</button></div>
-          <div id="paymentResult" class="mini-output">选择待支付订单后发起支付。</div>
-        </section>
-
-        <section class="panel table-panel compact" aria-labelledby="paymentsTitle">
-          <div class="panel-head"><div><p class="section-kicker">Records</p><h2 id="paymentsTitle">支付记录</h2></div></div>
-          <div id="paymentsTable" class="table-wrap"></div>
-        </section>
-      </aside>
-    </section>
-  </main>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d5c3b" />
+    <title>我的订单 - 小物优采</title>
+  </head>
+  <body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body>
 </html>

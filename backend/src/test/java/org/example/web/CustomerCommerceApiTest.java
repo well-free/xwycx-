@@ -61,73 +61,39 @@ class CustomerCommerceApiTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        assertThat(loginHtml).contains("login.js");
+        assertThat(loginHtml).contains("id=\"root\"");
+        assertThat(loginHtml).contains("type=\"module\"");
         assertThat(loginHtml).contains("login-page");
-        assertThat(loginHtml).contains("phoneInput");
-        assertThat(loginHtml).contains("codeInput");
-        assertThat(loginHtml).contains("registerBtn");
 
         String indexHtml = mockMvc.perform(get("/index.html"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        assertThat(indexHtml).contains("app.js");
-        assertThat(indexHtml).contains("userStatus");
-        assertThat(indexHtml).contains("commerceHero");
-        assertThat(indexHtml).contains("products.html");
-        assertThat(indexHtml).contains("orders.html");
-        assertThat(indexHtml).doesNotContain("href=\"/admin.html\"");
-        assertThat(indexHtml).doesNotContain("phoneInput");
-        assertThat(indexHtml).doesNotContain("codeInput");
+        assertThat(indexHtml).contains("id=\"root\"");
+        assertThat(indexHtml).contains("type=\"module\"");
 
         String productsHtml = mockMvc.perform(get("/products.html"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        assertThat(productsHtml).contains("productSearchInput");
-        assertThat(productsHtml).contains("checkoutSteps");
-        assertThat(productsHtml).contains("createOrderBtn");
-        assertThat(productsHtml).doesNotContain("href=\"/admin.html\"");
+        assertThat(productsHtml).contains("id=\"root\"");
 
         String ordersHtml = mockMvc.perform(get("/orders.html"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        assertThat(ordersHtml).contains("orderStatusFilter");
-        assertThat(ordersHtml).contains("paymentPanel");
-        assertThat(ordersHtml).contains("paymentsTable");
-        assertThat(ordersHtml).doesNotContain("href=\"/admin.html\"");
+        assertThat(ordersHtml).contains("id=\"root\"");
 
         String adminHtml = mockMvc.perform(get("/admin.html"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        assertThat(adminHtml).contains("adminPanel");
         assertThat(adminHtml).contains("admin-only-page");
-        assertThat(adminHtml).contains("admin-protected");
-        assertThat(adminHtml).contains("adminCreateProductBtn");
-        assertThat(adminHtml).contains("adminShipBtn");
-
-        String appJs = mockMvc.perform(get("/app.js"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        assertThat(appJs).contains("syncAdminVisibility");
-        assertThat(appJs).contains("admin-only-page");
-        assertThat(appJs).contains("window.location.replace('/index.html')");
-
-        String loginJs = mockMvc.perform(get("/login.js"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        assertThat(loginJs).contains("registerBtn");
-        assertThat(loginJs).contains("registerAndEnter");
+        assertThat(adminHtml).contains("id=\"root\"");
     }
 
     @Test

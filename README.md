@@ -14,7 +14,7 @@
 - RocketMQ
 - Flyway
 - Maven
-- 原生 HTML / CSS / JavaScript
+- React 19 / Vite
 
 ## 项目目录
 
@@ -26,7 +26,7 @@ deploy/              Nginx、systemd 与备份脚本
 docs/                开发和部署文档
 ```
 
-根目录 `pom.xml` 是 Maven 聚合入口。后端构建会将 `frontend/` 作为静态资源打入 Spring Boot JAR，因此源码保持独立，部署方式不变。
+根目录 `pom.xml` 是 Maven 聚合入口。后端构建会自动执行 `frontend/` 的 Vite 构建，并将 `frontend/dist/` 作为静态资源打入 Spring Boot JAR，因此部署方式不变。
 
 ## 已实现功能
 

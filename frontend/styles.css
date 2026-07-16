@@ -983,6 +983,24 @@ tbody tr:last-child td {
   text-align: center;
 }
 
+.async-state {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  padding: 24px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.error-state {
+  color: var(--red);
+  background: var(--red-soft);
+  border-color: #f0c7c7;
+}
+
 .admin-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
